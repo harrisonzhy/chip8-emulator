@@ -1,3 +1,3 @@
 # CHIP-8 Emulator
 
-Mimics the components of CHIP-8
+Interpreter mimicking the components of CHIP-8.
