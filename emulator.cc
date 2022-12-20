@@ -69,7 +69,9 @@ int findstackspace (Emulator &e) {
     return -1;
 }
 
-char* findfontptr (char c);
+uint16_t findfontaddress (uint16_t regval) {
+    return 0x500 + regval * 5;
+}
 
 int parse_8NNN (Emulator &e, uint16_t instr) {
     uint16_t sn  = 0b0000'0000'1111'0000 & instr;    // second nibble to find first reg
@@ -190,11 +192,11 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     }
     // FX29: 
     else if (tn == 2 && pn == 9) {
-
+        e.regs[0x11] = findfontaddress(e.regs[sn]);
     }
     // FX33: store digits of VX (decimal form)
     //       at addresses I, I+1, I+2
-    else if (tn ==3 && pn == 3) {
+    else if (tn == 3 && pn == 3) {
 
     }
     else {
