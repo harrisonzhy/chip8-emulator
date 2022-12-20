@@ -76,8 +76,8 @@ int parse_FNNN (Emulator &e, uint16_t instr);
 //  Scans for character inputs.
 char check_input() {
     char key;
-    int r = scanf(&key);
-    assert(r == 0);
+    int r = scanf("%s", &key);
+    assert(r >= 0);
     return key;
 }
 

@@ -259,12 +259,12 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     else if (tn == 2 && pn == 9) {
         e.reg_i = findfontaddress(e.regs[sn]);
     }
-    // FX33: store digits of VX (decimal form)
-    //       at addresses I, I+1, I+2
+    // FX33: store digits of VX (decimal form) at addresses
+    //       I, I+1, I+2 with alignment 1.
     else if (tn == 3 && pn == 3) {
-        memset((char*)(&e.reg_i), (e.regs[sn] / 100) % 10, 1); // hundreds
-        memset((char*)(&e.reg_i + 4), (e.regs[sn] / 10) % 10, 1); // tenths
-        memset((char*)(&e.reg_i + 8), e.regs[sn] % 10, 1); // ones
+        memset((char*)(&e.reg_i), (e.regs[sn] / 100) % 10, 1);      // hundreds
+        memset((char*)(&e.reg_i + 1), (e.regs[sn] / 10) % 10, 1);   // tenths
+        memset((char*)(&e.reg_i + 2), e.regs[sn] % 10, 1);          // ones
     }
     // FX55: store VX at I+X for X in [0, SIZEOF(e.regs)]
     else if (tn == 5 && pn == 5) {
@@ -303,7 +303,7 @@ uint16_t findfontaddress (uint16_t regval) {
 int main () {
     Emulator e;
     // copy font data to 0x050-0x09F in MEMBUF
-    uint16_t dest = (uint16_t)(&e.membuf[0]) + 0x050;
+    uintptr_t dest = (uintptr_t)(&e.membuf[0]) + 0x050;
     memcpy((void*)dest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);
 
 
