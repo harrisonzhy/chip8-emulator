@@ -44,18 +44,18 @@ struct Emulator {
     };
     uint16_t reg_i;
     char regs_valkeys [NREGISTERS] = {
-        // values are the indices
+        // corresponding values are the indices
         'x', '1', '2', '3',
         'q', 'w', 'e', 'a',
         's', 'd', 'z', 'c',
         '4', 'r', 'f', 'v'
     };
-    char* PC;
+    uint16_t PC;
 };
 
 //  Combine instructions at PC, PC+1 into one 16-bit
 //      instruction. Then prepare to fetch next opcode.
-int fetch (Emulator &e, char* PC);
+int fetch (Emulator &e, uint16_t PC);
 
 //  Executes 16-bit instruction returned by fetch (e, PC);
 int exec (Emulator &e, uint16_t instr);
