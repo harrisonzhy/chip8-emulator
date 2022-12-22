@@ -3,6 +3,7 @@
 #include <string>
 #include <cassert>
 #include <time.h>
+#include <SDL2/SDL.h>
 
 #define MEMSIZE             4096
 #define STACKSIZE           32
