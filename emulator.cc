@@ -1,12 +1,14 @@
 #include "emulator.hh"
 
-int fetch (Emulator &e, uint16_t* PC) {
-    assert(PC);
-    // combine instructions into one 16-bit instruction
-
+int fetch (Emulator &e, unsigned int i) {
+    // combine two 8-bit instructions into a 16-bit instruction
+    uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
     // read 16-bit instruction
-    exec(e, *PC);
-    PC += 2;
+    int r = exec(e, instr);
+    if (r != 0) {
+        return -1;
+    }
+    e.PC += 2;
     return 0;
 }
 
@@ -27,8 +29,10 @@ int exec (Emulator &e, uint16_t instr) {
             else if (instr == 0x00EE) {
                 for (auto i = 0; i != STACKSIZE; ++i) {
                     if (e.stack[i] != 0xFFFF) {
-                        // set PC equal to last address
-                        e.PC = e.stack[i];
+                        // set PC equal to index of last address
+                        int r = findpc(e, e.stack[i]);
+                        assert(r >= 0);
+                        e.PC = r;
                         // pop last address from stack
                         e.stack[i] = 0xFFFF;
                         break;
@@ -39,15 +43,17 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 1: {
             // 1NNN: jump
-            e.PC = sn + tn + pn;
+            int s = findpc(e, sn + tn + pn);
+            assert(s >= 0);
+            e.PC = s;
             break;
         }
         case 2: {
             // 2NNN: call subroutine
             int i = findstackspace(e);
-            assert(i != -1);
+            assert(i >= 0);
             // push PC to stack
-            e.stack[i] = e.PC;
+            e.stack[i] = e.membuf[e.PC];
             // set PC to NNN
             e.stack[i] = sn + tn + pn;
             break;
@@ -104,20 +110,26 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xB: {
             // BNNN: jump to address (XNN + VX)
-            e.PC = sn + tn + pn + e.regs[sn];
+            int t = findpc(e, sn + tn + pn + e.regs[sn]);
+            assert(t >= 0);
+            e.PC = t;
             break;
         }
         case 0xC: {
-            // CXNN: generates random number r, then 
-            // set VX to r & NN
-            e.regs[sn] = (uint16_t)rand() & (sn + tn);
+            // CXNN: generates random number rn in [0, NN], then 
+            // set VX to rn & NN
+            int rn = std::rand() % (sn + tn + 1) + (sn + tn);
+            e.regs[sn] = rn & (sn + tn);
             break;
         }
         case 0xD: {
+            // DXYN: Draws an N-pixel tall sprite from where I is
+            // currently pointing on the screen, as well as from
+            // VX and VY on the screen.
             uint16_t x_coord = e.regs[sn] % DISPLAY_WIDTH;
             uint16_t y_coord = e.regs[tn] % DISPLAY_HEIGHT;
             e.regs[0xF] = 0;
-            // do other display stuff idk
+            
             break;
         }
         case 0xE: {
@@ -147,6 +159,7 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         default: {
+            // invalid instruction
             return -1;
         }
     }
@@ -210,14 +223,14 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             //       set VF equal to the value bitshifted out
             if (pn == 6) {
                 // set VF to right-bitshifted out
-                e.regs[0xF] = instr & 0b0000'0000'0000'0001;
+                e.regs[0xF] = instr & 0b1;
                 e.regs[sn] = e.regs[sn] >> 1;
             }
             // 8XYE: set VX to VY, then left bitshift VX and
             //       set VF equal to the value bitshifted out
             else if (pn == 0xE) {
                 // set VF to bit-shifted out
-                e.regs[0xF] = instr & 0b1000'0000'0000'0000;
+                e.regs[0xF] = instr & 0x8000;
                 e.regs[sn] = e.regs[sn] << 1;
             }
             break;
@@ -228,7 +241,6 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             break;
         }
         default: {
-            // invalid instruction
             return -1;
         }
     }
@@ -256,7 +268,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     // FX1E: set I to I+VX and set carry flag if I>1000
     else if (tn == 1 && pn == 0xE) {
         e.reg_i += e.regs[sn];
-        if (e.reg_i > 1000) {
+        if (e.reg_i >= 0x1000) {
             e.regs[0xF] = 1;
         }
     }
@@ -265,6 +277,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     else if (tn == 0 && pn == 0xA) {
         // decrement initially
         e.PC -= 2;
+        assert(e.PC < MEMSIZE);
         char in;
         while (true) {
             in = check_input();
@@ -301,7 +314,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     // FX65: store the value of I+X into VX
     else if (tn == 6 && pn == 5) {
         for (auto i = 0; i != NREGISTERS; ++i) {
-            e.regs[i] = *(&e.reg_i + i*4);
+            e.regs[i] = *(&e.reg_i + i);
         }
     }
     else {
@@ -311,28 +324,28 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
 }
 
 
-int findstackspace (Emulator &e) {
-    for (auto i = STACKSIZE; i != 0; --i) {
-        if (e.stack[i-1] == 0xFFFF) {
-            return i-1;
-        }
-    }
-    return -1;
-}
-
-
-uint16_t findfontaddress (uint16_t regval) {
-    return 0x050 + regval * 5;
-}
-
-
 int main () {
     Emulator e;
-    // copy font data to 0x050-0x09F in MEMBUF
-    uintptr_t dest = (uintptr_t)(&e.membuf[0]) + 0x050;
-    memcpy((void*)dest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);
 
+    // load font data into 0x050-0x09F in membuf
+    uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
+    memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);
 
+    // load game data into 0512-4096 in membuf
+    uintptr_t gdest = (uintptr_t)(&e.membuf[0] + ROM_START_ADDR);
+    memcpy((void*)gdest, (void*)(&e.gamedata[0]), MEMSIZE-ROM_START_ADDR);
+
+    // loop through instructions stored in 0x200-0xFFF of membuf
+    while (e.PC < MEMSIZE-1) {
+        // fetch and execute instruction at membuf[PC]
+        int r = fetch(e, e.PC);
+        assert(r == 0);
+
+        // sleep and update timers
+        msleep(TMSLEEP);
+        updatedelaytimer(e);
+        updatesoundtimer(e);
+    }
 
     return 0;
 }
