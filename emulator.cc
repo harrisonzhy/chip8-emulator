@@ -327,26 +327,17 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
 
 
 int main () {
-
     // create SDL display
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         return -1;
     }
-    SDL_Window *window = SDL_CreateWindow("", 
+    SDL_Window* screen = SDL_CreateWindow("", 
                                           SDL_WINDOWPOS_CENTERED,
                                           SDL_WINDOWPOS_CENTERED,
-                                          680, 480, 0);
-    if (!window) {
-        return -1;
-    }
-    SDL_Surface *surface = SDL_GetWindowSurface(window);
-    if (!surface) {
-        return -1;
-    }
+                                          640, 320, 0);
 
     // create emulator
     Emulator e;
-
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
     memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);
@@ -355,31 +346,34 @@ int main () {
     uintptr_t gdest = (uintptr_t)(&e.membuf[0] + ROM_START_ADDR);
     memcpy((void*)gdest, (void*)(&e.gamedata[0]), MEMSIZE-ROM_START_ADDR);
 
-    int is_open = 1;
-    while (is_open) {
-        SDL_Event s;
-        while (SDL_PollEvent(&s) > 0) {
-            // loop through instructions stored in 0x200-0xFFF of membuf
-            while (e.PC < MEMSIZE-1) {
-                // fetch and execute instruction at membuf[PC]
-                int r = fetch(e, e.PC);
-                assert(r == 0);
+    SDL_Event s;
+    int is_running = 1;
+    while (is_running) {
+        while (e.PC < MEMSIZE-1) {
+            // fetch and execute instruction at membuf[PC]
+            int r = fetch(e, e.PC);
+            assert(r == 0);
 
-                // sleep and update timers
-                msleep(TMSLEEP);
-                updatedelaytimer(e);
-                updatesoundtimer(e);
-                
-                // handle SDL closes
-                if (s.type == SDL_QUIT) {
-                    is_open = 0;
-                    break;
-                }
-                SDL_UpdateWindowSurface(window);
+            // sleep and update timers
+            msleep(TMSLEEP);
+            updatedelaytimer(e);
+            updatesoundtimer(e);
+
+            // handle quit
+            SDL_WaitEvent(&s);
+            if (s.type == SDL_QUIT) {
+                SDL_Quit();
+                return 0;
             }
-        }        
+        }
+
+        // handle quit
+        SDL_WaitEvent(&s);
+            if (s.type == SDL_QUIT) {
+                SDL_Quit();
+                return 0;
+            }
     }
-    
 
     return 0;
 }
