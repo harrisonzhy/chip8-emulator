@@ -1,16 +1,18 @@
-OBJS = emulator.cc
-
-CC = g++
-
-# -w suppresses all warnings
-COMPILER_FLAGS = -w $(brew --prefix)/include
-
-LINKER_FLAGS = -I/opt/homebrew/include -L/opt/homebrew/lib/ -lSDL2
-
+#Executable name
 OBJ_NAME = emulator
 
-emu : $(OBJS)
-	$(CC) $(OBJS) $(COMPILER_FLAGS) $(LINKER_FLAGS) -o $(OBJ_NAME) -v
+#Compiler
+CC = g++ -std=c++17
 
-clean:
-	$(info CLEAN) @rm *.o emu
+LIBRARY_PATHS = -L/opt/homebrew/lib
+INCLUDE_PATHS = -I/opt/homebrew/include
+
+OBJS = emulator.cc
+
+COMPILER_FLAGS =
+
+#Libraries
+LINKER_FLAGS = -F/Library/Frameworks -lSDL2
+
+emu : $(OBJS)
+	$(CC) $(OBJS) $(INCLUDE_PATHS) $(LIBRARY_PATHS) $(COMPILER_FLAGS) $(LINKER_FLAGS) -o emu
