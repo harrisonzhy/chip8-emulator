@@ -3,7 +3,6 @@
 #include <string>
 #include <cassert>
 #include <time.h>
-#include "/opt/homebrew/Cellar/sdl2/2.24.1/include/SDL2/SDL.h"
 
 #define MEMSIZE             4096
 #define STACKSIZE           32

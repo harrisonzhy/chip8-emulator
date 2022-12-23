@@ -1,8 +1,16 @@
-emu: emulator.o
-	@g++ emulator.o -c -lSDL2 -o emu
+OBJS = emulator.cc
 
-emulator.o: emulator.cc
-	@g++ -I/opt/homebrew/Cellar/sdl2/2.24.1/include -c -std=c++17 emulator.cc -o emulator.o
+CC = g++
+
+# -w suppresses all warnings
+COMPILER_FLAGS = -w $(brew --prefix)/include
+
+LINKER_FLAGS = -I/opt/homebrew/include -L/opt/homebrew/lib/ -lSDL2
+
+OBJ_NAME = emulator
+
+emu : $(OBJS)
+	$(CC) $(OBJS) $(COMPILER_FLAGS) $(LINKER_FLAGS) -o $(OBJ_NAME) -v
 
 clean:
 	$(info CLEAN) @rm *.o emu

@@ -1,4 +1,6 @@
 #include "emulator.hh"
+#include "SDL.h"
+
 
 int fetch (Emulator &e, unsigned int i) {
     // combine two 8-bit instructions into a 16-bit instruction
