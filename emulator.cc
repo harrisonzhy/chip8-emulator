@@ -2,7 +2,7 @@
 #include <SDL2/SDL.h>
 
 
-int fetch (Emulator &e, unsigned int i) {
+int fetch (Emulator &e, uint16_t i) {
     // combine two 8-bit instructions into a 16-bit instruction
     uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
     // read 16-bit instruction
@@ -28,11 +28,7 @@ int exec (Emulator &e, uint16_t instr) {
         case 0x0: {
             // 00E0: clear display
             if (instr == 0x00E0) {
-                SDL_FillRect((SDL_Surface*)e.surface, 
-                              nullptr, 
-                              SDL_MapRGB(((SDL_Surface*)e.surface)->format, 
-                              0x0, 0x0, 0x0));
-                SDL_UpdateWindowSurface((SDL_Window*)e.screen);
+                SDL_RenderFillRect((SDL_Renderer*)e.renderer, nullptr);
             }
             // 00EE: return from subroutine
             else if (instr == 0x00EE) {
@@ -114,7 +110,7 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xA: {
             // ANNN: set I to NNN
-            e.reg_i = nnn;
+            e.membuf[e.I] = nnn;
             break;
         }
         case 0xB: {
@@ -134,11 +130,38 @@ int exec (Emulator &e, uint16_t instr) {
         case 0xD: {
             // DXYN: Draws an N-pixel tall sprite from where I is
             // currently pointing on the screen, as well as from
-            // VX and VY on the screen.
-            uint16_t x_coord = e.regs[sn] % DISPLAY_WIDTH;
-            uint16_t y_coord = e.regs[tn] % DISPLAY_HEIGHT;
+            // VX and VY on the screen
+
+            // find coordinates
+            uint16_t x = e.regs[sn] % DISPLAY_WIDTH;
+            uint16_t y = e.regs[tn] % DISPLAY_HEIGHT;
             e.regs[0xF] = 0;
-            
+
+            assert(x < DISPLAY_WIDTH);
+            assert(y < DISPLAY_HEIGHT);
+
+            // handle pixel switching
+            for (auto i = 0; i != pn; ++i) {
+                for (auto p = 0; p != 8; ++p) {
+                    // if current pixel is on and pixel at
+                    // (x,y) is also on, then turn off pixel at (x,y)
+                    // and set VF to 1
+                    if (p & (0x80 >> p) == 1 && e.display[y][x] == 1) {
+                        e.display[y][x] = 0;
+                        e.regs[0xF] = 1;
+                    }
+                    // if current pixel is on and pixel at
+                    // (x,y) is off, then turn on pixel at (x,y)
+                    // and leave VF as 0
+                    else if (p & (0x80 >> p) == 1 && e.display[x][y] == 0) {
+                        e.display[y][x] = 1;
+                        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, x, y);
+                    }
+                    sn += 1;
+                }
+                tn += 1;
+            }
+
             break;
         }
         case 0xE: {
@@ -275,10 +298,11 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     else if (tn == 0x1 && pn == 0x8) {
         e.sound_timer = e.regs[sn];
     }
-    // FX1E: set I to I+VX and set carry flag if I>1000
+    // FX1E: set I to I+VX and set carry flag if overflow
     else if (tn == 0x1 && pn == 0xE) {
-        e.reg_i += e.regs[sn];
-        if (e.reg_i >= 0x1000) {
+        e.membuf[e.I] += e.regs[sn];
+        // check overflow
+        if (e.membuf[e.I] < e.regs[sn]) {
             e.regs[0xF] = 1;
         }
     }
@@ -306,25 +330,24 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     }
     // FX29:
     else if (tn == 0x2 && pn == 0x9) {
-        e.reg_i = findfontaddress(e.regs[sn]);
+        e.I = findfontindex(e.regs[sn]);
     }
-    // FX33: store digits of VX (decimal form) at addresses
-    //       I, I+1, I+2 with alignment 1.
+    // FX33: store digits of VX (decimal form) at I, I+1, I+2
     else if (tn == 0x3 && pn == 0x3) {
-        memset((char*)(&e.reg_i), (e.regs[sn] / 100) % 10, 1);      // hundreds
-        memset((char*)(&e.reg_i + 1), (e.regs[sn] / 10) % 10, 1);   // tenths
-        memset((char*)(&e.reg_i + 2), e.regs[sn] % 10, 1);          // ones
+        e.membuf[e.I] = (e.regs[sn] / 100) % 10;
+        e.membuf[e.I+1] = (e.regs[sn] / 10) % 10;
+        e.membuf[e.I+2] = (e.regs[sn]) % 10;
     }
     // FX55: store VX at I+X for X in [0, SIZEOF(e.regs)]
     else if (tn == 0x5 && pn == 0x5) {
         for (auto i = 0; i != NREGISTERS; ++i) {
-            memset((char*)(&e.reg_i + i*4), e.regs[i], 1);
+            e.membuf[e.I+i] = e.regs[i];
         }
     }
     // FX65: store the value of I+X into VX
     else if (tn == 0x6 && pn == 0x5) {
         for (auto i = 0; i != NREGISTERS; ++i) {
-            e.regs[i] = *(&e.reg_i + i);
+            e.regs[i] = e.membuf[e.I+i];
         }
     }
     else {
@@ -343,16 +366,11 @@ int main () {
     // create emulator
     Emulator e;
 
-    e.screen = SDL_CreateWindow("", 
-                                SDL_WINDOWPOS_CENTERED,
-                                SDL_WINDOWPOS_CENTERED,
-                                640, 320, 0);
-    e.surface = SDL_GetWindowSurface((SDL_Window*)e.screen);
-    SDL_FillRect((SDL_Surface*)e.surface, 
-                              nullptr, 
-                              SDL_MapRGB(((SDL_Surface*)e.surface)->format, 
-                              0x0, 0x0, 0x0));
-    SDL_UpdateWindowSurface((SDL_Window*)e.screen);
+    SDL_CreateWindowAndRenderer(640, 320, 0,
+                                (SDL_Window**)e.window, (SDL_Renderer**)e.renderer);
+    SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, 0);
+    SDL_RenderClear((SDL_Renderer*)e.renderer);
+    SDL_RenderFillRect((SDL_Renderer*)e.renderer, nullptr);
 
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
@@ -378,7 +396,8 @@ int main () {
             // handle quit
             SDL_WaitEvent(&s);
             if (s.type == SDL_QUIT) {
-                SDL_DestroyWindow((SDL_Window*)e.screen);
+                SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
+                SDL_DestroyWindow((SDL_Window*)e.window);
                 SDL_Quit();
                 return 0;
             }
@@ -387,7 +406,8 @@ int main () {
         // handle quit
         SDL_WaitEvent(&s);
         if (s.type == SDL_QUIT) {
-            SDL_DestroyWindow((SDL_Window*)e.screen);
+            SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
+            SDL_DestroyWindow((SDL_Window*)e.window);
             SDL_Quit();
             return 0;
         }

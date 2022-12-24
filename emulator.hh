@@ -38,30 +38,32 @@ struct Emulator {
     };
     uint16_t membuf[MEMSIZE] = {0};
     uint16_t stack[STACKSIZE] = {0xFFFF};
-    uint8_t regs [NREGISTERS] = {
+    uint8_t regs[NREGISTERS] = {
         0, 0, 0, 0, // V0-V3
         0, 0, 0, 0, // V4-V7
         0, 0, 0, 0, // V8-VB
         0, 0, 0, 0, // VC-VF 
     };
-    uint16_t reg_i;
-    char regs_valkeys [NREGISTERS] = {
+    uint16_t I;     // index
+    char regs_valkeys[NREGISTERS] = {
         'x', '1', '2', '3', // 0-3
         'q', 'w', 'e', 'a', // 4-7
         's', 'd', 'z', 'c', // 7-11
         '4', 'r', 'f', 'v'  // 11-15
     };
-    unsigned int PC;
+    uint16_t PC;
     uint8_t delay_timer = UINT8_MAX;
     uint8_t sound_timer = UINT8_MAX;
 
-    void* screen;  // window
-    void* surface; // surface
+    void* window;   // window
+    void* surface;  // surface
+    void* renderer; // renderer
+    int display[32][64] = {0};
 };
 
 //  Combine instructions at PC, PC+1 into one 16-bit
 //      instruction. Then prepare to fetch next opcode.
-int fetch (Emulator &e, unsigned int in);
+int fetch (Emulator &e, uint16_t in);
 
 //  Executes 16-bit instruction returned by fetch (e, PC);
 int exec (Emulator &e, uint16_t instr);
@@ -78,7 +80,7 @@ int findstackspace (Emulator &e) {
 
 //  Finds address of a given hexadecimal character stored
 //      in a particular register (regval).
-uint16_t findfontaddress (uint16_t regval) {
+uint16_t findfontindex (uint16_t regval) {
     return 0x050 + regval * 5;
 }
 
