@@ -359,27 +359,28 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
 
 
 int main () {
-    // create SDL display
-    SDL_Init(SDL_INIT_VIDEO);
-
-    // create emulator
+    // create emulator and display
     Emulator e;
-
+    SDL_Init(SDL_INIT_VIDEO);
     e.window = SDL_CreateWindow("", 
                                 SDL_WINDOWPOS_CENTERED, 
                                 SDL_WINDOWPOS_CENTERED,
-                                640, 320, 0);
+                                DISPLAY_WIDTH*TEXEL_SCALE, 
+                                DISPLAY_HEIGHT*TEXEL_SCALE, 0);
     assert(e.window);
-    e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, SDL_RENDERER_ACCELERATED);
+    e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, 
+                                    SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
     assert(e.renderer);
-
     SDL_RenderClear((SDL_Renderer*)e.renderer);
-    SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    for (auto i = 0; i != DISPLAY_HEIGHT; ++i) {
-        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, i, i);
-    }
-    SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
+    // SDL_Rect recttest = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
+    // SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
+    // for (auto i = 0; i != DISPLAY_WIDTH; ++i) {
+    //     recttest.x = i*TEXEL_SCALE;
+    //     recttest.y = i*TEXEL_SCALE;
+    //     SDL_RenderFillRect((SDL_Renderer*)e.renderer, &recttest);
+    // }
+    SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
@@ -396,23 +397,29 @@ int main () {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
+
             // update display
+            SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             for (auto i = 0; i < DISPLAY_HEIGHT; ++i) {
                 for (auto j = 0; j < DISPLAY_WIDTH; ++j) {
+                    rect.x = j*TEXEL_SCALE;
+                    rect.y = i*TEXEL_SCALE;
+                    
                     // if pixel is on, draw white
                     if (e.display[j][i] == 0) {
                         SDL_RenderClear((SDL_Renderer*)e.renderer);
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-                        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, j, i);
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
+                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
+
                     }
                     // else if pixel is off, draw black
                     else if (e.display[j][i] == 1) {
                         SDL_RenderClear((SDL_Renderer*)e.renderer);
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-                        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, j, i);
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                     }
                     SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                    
+
                     // handle quit
                     SDL_PollEvent(&s);
                     if (s.type == SDL_QUIT) {
@@ -426,7 +433,6 @@ int main () {
                 updatedelaytimer(e);
                 updatesoundtimer(e);
             }
-
             // handle quit
             SDL_PollEvent(&s);
             if (s.type == SDL_QUIT) {

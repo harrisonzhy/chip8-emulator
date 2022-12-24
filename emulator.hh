@@ -10,6 +10,7 @@
 #define ROM_START_ADDR      0x200
 #define DISPLAY_WIDTH       64
 #define DISPLAY_HEIGHT      32
+#define TEXEL_SCALE         16
 #define TMSLEEP             1850
 
 struct Emulator {
