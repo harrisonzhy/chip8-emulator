@@ -56,9 +56,8 @@ struct Emulator {
     uint8_t sound_timer = UINT8_MAX;
 
     void* window;   // window
-    void* surface;  // surface
     void* renderer; // renderer
-    int display[32][64] = {0};
+    char display[DISPLAY_HEIGHT][DISPLAY_WIDTH] = {0};
 };
 
 //  Combine instructions at PC, PC+1 into one 16-bit

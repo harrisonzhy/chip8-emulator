@@ -360,17 +360,26 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
 
 int main () {
     // create SDL display
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        return -1;
-    }
+    SDL_Init(SDL_INIT_VIDEO);
 
     // create emulator
     Emulator e;
 
-    SDL_CreateWindowAndRenderer(640, 320, 0,
-                                (SDL_Window**)&e.window, (SDL_Renderer**)&e.renderer);
-    SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, 0);
+    e.window = SDL_CreateWindow("", 
+                                SDL_WINDOWPOS_CENTERED, 
+                                SDL_WINDOWPOS_CENTERED,
+                                640, 320, 0);
+    assert(e.window);
+    e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, SDL_RENDERER_ACCELERATED);
+    assert(e.renderer);
+
     SDL_RenderClear((SDL_Renderer*)e.renderer);
+    SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    for (auto i = 0; i != DISPLAY_HEIGHT; ++i) {
+        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, i, i);
+    }
+    SDL_RenderPresent((SDL_Renderer*)e.renderer);
+
 
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
@@ -387,22 +396,25 @@ int main () {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
-
             // update display
             for (auto i = 0; i < DISPLAY_HEIGHT; ++i) {
                 for (auto j = 0; j < DISPLAY_WIDTH; ++j) {
                     // if pixel is on, draw white
                     if (e.display[j][i] == 0) {
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, 0);
+                        SDL_RenderClear((SDL_Renderer*)e.renderer);
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
                         SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, j, i);
                     }
                     // else if pixel is off, draw black
                     else if (e.display[j][i] == 1) {
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 255, 255, 255, 255);
+                        SDL_RenderClear((SDL_Renderer*)e.renderer);
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
                         SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, j, i);
                     }
+                    SDL_RenderPresent((SDL_Renderer*)e.renderer);
+                    
                     // handle quit
-                    SDL_WaitEvent(&s);
+                    SDL_PollEvent(&s);
                     if (s.type == SDL_QUIT) {
                         goto quit;
                     }
@@ -416,18 +428,23 @@ int main () {
             }
 
             // handle quit
-            SDL_WaitEvent(&s);
+            SDL_PollEvent(&s);
             if (s.type == SDL_QUIT) {
                 goto quit;
             }
             ++loops;
         }
+        // handle quit
+        SDL_PollEvent(&s);
+        if (s.type == SDL_QUIT) {
+            goto quit;
+        }
     }
+    goto quit;
     quit:
         SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
         SDL_DestroyWindow((SDL_Window*)e.window);
         SDL_Quit();
 
-    goto quit;
     return 0;
 }
