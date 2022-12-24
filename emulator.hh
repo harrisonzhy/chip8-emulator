@@ -54,6 +54,9 @@ struct Emulator {
     unsigned int PC;
     uint8_t delay_timer = UINT8_MAX;
     uint8_t sound_timer = UINT8_MAX;
+
+    void* screen;  // window
+    void* surface; // surface
 };
 
 //  Combine instructions at PC, PC+1 into one 16-bit
@@ -127,13 +130,13 @@ void msleep(long tms) {
 //  Updates delay timer.
 void updatedelaytimer (Emulator &e) {
     if (e.delay_timer != 0) {
-        e.delay_timer -= 9;
+        e.delay_timer -= 1;
     }
 }
 
 //  Updates sleep timer.
 void updatesoundtimer (Emulator &e) {
     if (e.sound_timer != 0) {
-        e.sound_timer -= 9;
+        e.sound_timer -= 1;
     }
 }
