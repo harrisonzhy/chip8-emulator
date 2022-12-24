@@ -21,14 +21,18 @@ int exec (Emulator &e, uint16_t instr) {
     uint16_t tn  = (0xF0 & instr) >> 4;      // third nibble to find second reg
     uint16_t pn  = (0xF & instr);            // fourth nibble
 
-    uint16_t nn  = 0x00FF & instr;
-    uint16_t nnn = 0x0FFF & instr;
+    uint16_t nn  = 0x00FF & instr;           // 8-bit number
+    uint16_t nnn = 0x0FFF & instr;           // 12-bit address
 
     switch (fn) {
         case 0x0: {
             // 00E0: clear display
             if (instr == 0x00E0) {
-                SDL_RenderFillRect((SDL_Renderer*)e.renderer, nullptr);
+                for (auto i = 0; i < DISPLAY_HEIGHT; ++i) {
+                    for (auto j = 0; j < DISPLAY_WIDTH; ++j) {
+                        e.display[i][j] = 0;
+                    }
+                }
             }
             // 00EE: return from subroutine
             else if (instr == 0x00EE) {
@@ -140,28 +144,25 @@ int exec (Emulator &e, uint16_t instr) {
             assert(x < DISPLAY_WIDTH);
             assert(y < DISPLAY_HEIGHT);
 
-            // handle pixel switching
+            // handle pixel updates
             for (auto i = 0; i != pn; ++i) {
-                for (auto p = 0; p != 8; ++p) {
+                for (auto j = 0; j != 8; ++j) {
                     // if current pixel is on and pixel at
                     // (x,y) is also on, then turn off pixel at (x,y)
                     // and set VF to 1
-                    if (p & (0x80 >> p) == 1 && e.display[y][x] == 1) {
+                    uint16_t p = e.membuf[e.I + j];
+                    if ((p & (0x80 >> j)) == 1 && e.display[y][x] == 1) {
                         e.display[y][x] = 0;
                         e.regs[0xF] = 1;
                     }
                     // if current pixel is on and pixel at
                     // (x,y) is off, then turn on pixel at (x,y)
                     // and leave VF as 0
-                    else if (p & (0x80 >> p) == 1 && e.display[x][y] == 0) {
+                    else if ((p & (0x80 >> j)) == 1 && e.display[x][y] == 0) {
                         e.display[y][x] = 1;
-                        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, x, y);
                     }
-                    sn += 1;
                 }
-                tn += 1;
             }
-
             break;
         }
         case 0xE: {
@@ -367,10 +368,9 @@ int main () {
     Emulator e;
 
     SDL_CreateWindowAndRenderer(640, 320, 0,
-                                (SDL_Window**)e.window, (SDL_Renderer**)e.renderer);
+                                (SDL_Window**)&e.window, (SDL_Renderer**)&e.renderer);
     SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, 0);
     SDL_RenderClear((SDL_Renderer*)e.renderer);
-    SDL_RenderFillRect((SDL_Renderer*)e.renderer, nullptr);
 
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
@@ -387,31 +387,47 @@ int main () {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
+
+            // update display
+            for (auto i = 0; i < DISPLAY_HEIGHT; ++i) {
+                for (auto j = 0; j < DISPLAY_WIDTH; ++j) {
+                    // if pixel is on, draw white
+                    if (e.display[j][i] == 0) {
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0, 0, 0, 0);
+                        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, j, i);
+                    }
+                    // else if pixel is off, draw black
+                    else if (e.display[j][i] == 1) {
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 255, 255, 255, 255);
+                        SDL_RenderDrawPoint((SDL_Renderer*)e.renderer, j, i);
+                    }
+                    // handle quit
+                    SDL_WaitEvent(&s);
+                    if (s.type == SDL_QUIT) {
+                        goto quit;
+                    }
+                }
+            }
             // restrict CPU cycle to ~600 Hz, update timers at 60 Hz
             msleep(TMSLEEP);
             if (loops % 10 == 0) {
                 updatedelaytimer(e);
                 updatesoundtimer(e);
             }
+
             // handle quit
             SDL_WaitEvent(&s);
             if (s.type == SDL_QUIT) {
-                SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
-                SDL_DestroyWindow((SDL_Window*)e.window);
-                SDL_Quit();
-                return 0;
+                goto quit;
             }
             ++loops;
         }
-        // handle quit
-        SDL_WaitEvent(&s);
-        if (s.type == SDL_QUIT) {
-            SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
-            SDL_DestroyWindow((SDL_Window*)e.window);
-            SDL_Quit();
-            return 0;
-        }
     }
+    quit:
+        SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
+        SDL_DestroyWindow((SDL_Window*)e.window);
+        SDL_Quit();
 
+    goto quit;
     return 0;
 }
