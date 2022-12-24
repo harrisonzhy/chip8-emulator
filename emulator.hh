@@ -130,13 +130,13 @@ void msleep(long tms) {
 //  Updates delay timer.
 void updatedelaytimer (Emulator &e) {
     if (e.delay_timer != 0) {
-        e.delay_timer -= 1;
+        --e.delay_timer;
     }
 }
 
 //  Updates sleep timer.
 void updatesoundtimer (Emulator &e) {
     if (e.sound_timer != 0) {
-        e.sound_timer -= 1;
+        --e.sound_timer;
     }
 }

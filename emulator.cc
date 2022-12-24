@@ -28,7 +28,11 @@ int exec (Emulator &e, uint16_t instr) {
         case 0x0: {
             // 00E0: clear display
             if (instr == 0x00E0) {
-                
+                SDL_FillRect((SDL_Surface*)e.surface, 
+                              nullptr, 
+                              SDL_MapRGB(((SDL_Surface*)e.surface)->format, 
+                              0x0, 0x0, 0x0));
+                SDL_UpdateWindowSurface((SDL_Window*)e.screen);
             }
             // 00EE: return from subroutine
             else if (instr == 0x00EE) {
@@ -227,7 +231,7 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             e.regs[sn] = e.regs[tn];
             // 8XY6: set VX to VY, then right bitshift VX and
             //       set VF equal to the value bitshifted out
-            if (pn == 6) {
+            if (pn == 0x6) {
                 // set VF to right-bitshifted out
                 e.regs[0xF] = instr & 0b1;
                 e.regs[sn] = e.regs[sn] >> 1;
@@ -261,15 +265,15 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
 
     // FX07: set VX to current val of delay timer
     if (tn == 0x0 && pn == 0x7) {
-        
+        e.regs[sn] = e.delay_timer;
     }
     // FX15: set delay timer to VX
     else if (tn == 0x1 && pn == 0x5) {
-
+        e.delay_timer = e.regs[sn];
     }
     // FX18: set sound timer to VX
     else if (tn == 0x1 && pn == 0x8) {
-        
+        e.sound_timer = e.regs[sn];
     }
     // FX1E: set I to I+VX and set carry flag if I>1000
     else if (tn == 0x1 && pn == 0xE) {
@@ -344,7 +348,10 @@ int main () {
                                 SDL_WINDOWPOS_CENTERED,
                                 640, 320, 0);
     e.surface = SDL_GetWindowSurface((SDL_Window*)e.screen);
-    SDL_FillRect((SDL_Surface*)e.surface, nullptr, SDL_MapRGB(((SDL_Surface*)e.surface)->format, 0x0, 0x0, 0x0));
+    SDL_FillRect((SDL_Surface*)e.surface, 
+                              nullptr, 
+                              SDL_MapRGB(((SDL_Surface*)e.surface)->format, 
+                              0x0, 0x0, 0x0));
     SDL_UpdateWindowSurface((SDL_Window*)e.screen);
 
     // load font data into 0x050-0x09F in membuf
@@ -357,16 +364,17 @@ int main () {
 
     SDL_Event s;
     while (1) {
+        unsigned int loops = 0;
         while (e.PC < MEMSIZE-1) {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
-
-            // sleep and update timers
+            // restrict CPU cycle to ~600 Hz, update timers at 60 Hz
             msleep(TMSLEEP);
-            updatedelaytimer(e);
-            updatesoundtimer(e);
-
+            if (loops % 10 == 0) {
+                updatedelaytimer(e);
+                updatesoundtimer(e);
+            }
             // handle quit
             SDL_WaitEvent(&s);
             if (s.type == SDL_QUIT) {
@@ -374,6 +382,7 @@ int main () {
                 SDL_Quit();
                 return 0;
             }
+            ++loops;
         }
         // handle quit
         SDL_WaitEvent(&s);
