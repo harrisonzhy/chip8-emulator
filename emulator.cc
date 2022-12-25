@@ -52,6 +52,7 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0x1: {
             // 1NNN: jump
+            e.membuf[e.PC] = nnn;
             int s = findpc(e, nnn);
             assert(s >= 0);
             e.PC = s;
@@ -64,7 +65,7 @@ int exec (Emulator &e, uint16_t instr) {
             // push PC to stack
             e.stack[i] = e.membuf[e.PC];
             // set PC to NNN
-            e.stack[i] = nnn;
+            e.membuf[e.PC] = nnn;
             break;
         }
         case 0x3: {
@@ -187,7 +188,8 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         case 0xF: {
-            int s = parse_FNNN(e, instr); 
+            int s = parse_FNNN(e, instr);
+            printf("%u\n", instr);
             assert(s == 0);
             break;
         }
@@ -201,9 +203,9 @@ int exec (Emulator &e, uint16_t instr) {
 
 
 int parse_8NNN (Emulator &e, uint16_t instr) {
-    uint16_t sn  = (0x0F00 & instr) >> 8;       // second nibble to find first reg
-    uint16_t tn  = (0x00F0 & instr) >> 4;       // third nibble to find second reg
-    uint16_t pn  = (0x000F & instr);            // fourth nibble
+    uint16_t sn  = (0xF00 & instr) >> 8;     // second nibble to find first reg
+    uint16_t tn  = (0xF0 & instr) >> 4;      // third nibble to find second reg
+    uint16_t pn  = (0xF & instr);            // fourth nibble
 
     switch (pn) {
         case 0x0: {
@@ -283,9 +285,9 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
 
 
 int parse_FNNN (Emulator &e, uint16_t instr) {
-    uint16_t sn  = (0x0F00 & instr) >> 8;       // second nibble to find first reg
-    uint16_t tn  = (0x00F0 & instr) >> 4;       // third nibble to find second reg
-    uint16_t pn  = (0x000F & instr);            // fourth nibble
+    uint16_t sn  = (0xF00 & instr) >> 8;     // second nibble to find first reg
+    uint16_t tn  = (0xF0 & instr) >> 4;      // third nibble to find second reg
+    uint16_t pn  = (0xF & instr);            // fourth nibble
 
     // FX07: set VX to current val of delay timer
     if (tn == 0x0 && pn == 0x7) {
@@ -384,13 +386,26 @@ int main () {
 
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
-    memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);
+    memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);    
 
-    // load game data into 0512-4096 in membuf
-    uintptr_t gdest = (uintptr_t)(&e.membuf[0] + ROM_START_ADDR);
-    memcpy((void*)gdest, (void*)(&e.gamedata[0]), MEMSIZE-ROM_START_ADDR);
+    // load game data into 0x200-0xFFF in membuf
+    std::ifstream f(GAME_PATH, std::ios::binary | std::ios::ate);
+    if (!f.is_open()) {
+        return -1;
+    }
+    std::streampos sz = f.tellg();
+    char* tbuf = new char[sz];
+    f.seekg(0, std::ios::beg);
+    f.read(tbuf, sz);
+    f.close();
+    for (auto i = 0; i != sz; ++i) {
+        e.membuf[ROM_START_ADDR+i] = tbuf[i];
+    }
+    delete[] tbuf;
 
+    // run game
     SDL_Event s;
+    SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
     while (1) {
         unsigned int loops = 0;
         while (e.PC < MEMSIZE-1) {
@@ -399,7 +414,6 @@ int main () {
             assert(r == 0);
 
             // update display
-            SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             for (auto i = 0; i < DISPLAY_HEIGHT; ++i) {
                 for (auto j = 0; j < DISPLAY_WIDTH; ++j) {
                     rect.x = j*TEXEL_SCALE;
@@ -407,14 +421,11 @@ int main () {
                     
                     // if pixel is on, draw white
                     if (e.display[j][i] == 0) {
-                        SDL_RenderClear((SDL_Renderer*)e.renderer);
                         SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                         SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
-
                     }
                     // else if pixel is off, draw black
                     else if (e.display[j][i] == 1) {
-                        SDL_RenderClear((SDL_Renderer*)e.renderer);
                         SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
                         SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                     }
@@ -428,7 +439,7 @@ int main () {
                 }
             }
             // restrict CPU cycle to ~600 Hz, update timers at 60 Hz
-            msleep(TMSLEEP);
+            //msleep(TMSLEEP);
             if (loops % 10 == 0) {
                 updatedelaytimer(e);
                 updatesoundtimer(e);

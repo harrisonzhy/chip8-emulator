@@ -3,6 +3,7 @@
 #include <string>
 #include <cassert>
 #include <time.h>
+#include <fstream>
 
 #define MEMSIZE             4096
 #define STACKSIZE           32
@@ -12,6 +13,7 @@
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
 #define TMSLEEP             1850
+#define GAME_PATH           "test_opcode.ch8"
 
 struct Emulator {
     uint16_t fontdata[0x09F-0x050+1] =
@@ -38,7 +40,7 @@ struct Emulator {
 
     };
     uint16_t membuf[MEMSIZE] = {0};
-    uint16_t stack[STACKSIZE] = {0xFFFF};
+    uint16_t stack[STACKSIZE] = {0};
     uint8_t regs[NREGISTERS] = {
         0, 0, 0, 0, // V0-V3
         0, 0, 0, 0, // V4-V7
@@ -52,7 +54,7 @@ struct Emulator {
         's', 'd', 'z', 'c', // 7-11
         '4', 'r', 'f', 'v'  // 11-15
     };
-    uint16_t PC;
+    uint16_t PC = ROM_START_ADDR;
     uint8_t delay_timer = UINT8_MAX;
     uint8_t sound_timer = UINT8_MAX;
 
@@ -88,6 +90,7 @@ uint16_t findfontindex (uint16_t regval) {
 //      address in the memory buffer.
 int findpc (Emulator &e, uint16_t addr) {
     for (auto i = 0; i != MEMSIZE; ++i) {
+        printf("%d\n", e.membuf[i]);
         if (e.membuf[i] == addr) {
             return i;
         }
