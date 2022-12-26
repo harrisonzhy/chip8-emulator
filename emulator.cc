@@ -38,10 +38,8 @@ int exec (Emulator &e, uint16_t instr) {
             else if (instr == 0x00EE) {
                 for (auto i = 0; i != STACKSIZE; ++i) {
                     if (e.stack[i] != 0xFFFF) {
-                        // set PC equal to index of last address
-                        int r = findpc(e, e.stack[i]);
-                        assert(r >= 0);
-                        e.PC = r;
+                        // set PC equal to last address in stack
+                        e.PC = e.stack[i];
                         // pop last address from stack
                         e.stack[i] = 0xFFFF;
                         break;
@@ -51,11 +49,8 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         case 0x1: {
-            // 1NNN: jump
-            e.membuf[e.PC] = nnn;
-            int s = findpc(e, nnn);
-            assert(s >= 0);
-            e.PC = s;
+            // 1NNN: set PC to NNN
+            e.PC = nnn;
             break;
         }
         case 0x2: {
@@ -63,9 +58,9 @@ int exec (Emulator &e, uint16_t instr) {
             int i = findstackspace(e);
             assert(i >= 0);
             // push PC to stack
-            e.stack[i] = e.membuf[e.PC];
+            e.stack[i] = e.PC;
             // set PC to NNN
-            e.membuf[e.PC] = nnn;
+            e.PC = nnn;
             break;
         }
         case 0x3: {
@@ -115,14 +110,12 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xA: {
             // ANNN: set I to NNN
-            e.membuf[e.I] = nnn;
+            e.I = nnn;
             break;
         }
         case 0xB: {
-            // BNNN: jump to address (NNN + VX)
-            int t = findpc(e, nnn + e.regs[sn]);
-            assert(t >= 0);
-            e.PC = t;
+            // BNNN: jump to address (XNN + VX)
+            e.PC = nnn + e.regs[sn];
             break;
         }
         case 0xC: {
@@ -189,7 +182,6 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xF: {
             int s = parse_FNNN(e, instr);
-            printf("%u\n", instr);
             assert(s == 0);
             break;
         }
@@ -230,25 +222,21 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
         }
         case 0x4: {
             // 8XY4: set VX to VX + VY
-            uint16_t vx_prev = e.regs[sn];
+            e.regs[0xF] = 0;
+            uint8_t vx_prev = e.regs[sn];
             e.regs[sn] += e.regs[tn];
             // set VF = 1 if 'carry' (overflow) and 0 otherwise
             if (e.regs[sn] < vx_prev) {
                 e.regs[0xF] = 1;
-            }
-            else {
-                e.regs[0xF] = 0;
             }
             break;
         }
         case 0x5: {
             // 8XY5: set VX to VX - VY
             // set VF = 0 if `borrow` and 1 otherwise
+            e.regs[0xF] = 1;
             if (e.regs[sn] < e.regs[tn]) {
                 e.regs[0xF] = 0;
-            }
-            else {
-                e.regs[0xF] = 1;
             }
             e.regs[sn] -= e.regs[tn];
             break;
@@ -266,13 +254,18 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             //       set VF equal to the value bitshifted out
             else if (pn == 0xE) {
                 // set VF to bit-shifted out
-                e.regs[0xF] = instr & 0x8000;
+                e.regs[0xF] = (instr & 0b1000'0000) >> 7;
                 e.regs[sn] = e.regs[sn] << 1;
             }
             break;
         }
         case 0x7: {
             // 8XY7: set VX to VY - VX
+            // set VF = 0 if `borrow` and 1 otherwise
+            e.regs[0xF] = 1;
+            if (e.regs[tn] < e.regs[sn]) {
+                e.regs[0xF] = 0;
+            }
             e.regs[sn] = e.regs[tn] - e.regs[sn];
             break;
         }
@@ -301,11 +294,13 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     else if (tn == 0x1 && pn == 0x8) {
         e.sound_timer = e.regs[sn];
     }
-    // FX1E: set I to I+VX and set carry flag if overflow
+    // FX1E: set I to I+VX and set carry flag to 1 if overflow
     else if (tn == 0x1 && pn == 0xE) {
-        e.membuf[e.I] += e.regs[sn];
+        e.regs[0xF] = 0;
+        uint16_t prev_I = e.I;
+        e.I += e.regs[sn];
         // check overflow
-        if (e.membuf[e.I] < e.regs[sn]) {
+        if (e.I < prev_I) {
             e.regs[0xF] = 1;
         }
     }
