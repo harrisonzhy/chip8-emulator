@@ -130,6 +130,7 @@ int exec (Emulator &e, uint16_t instr) {
             // currently pointing on the screen, as well as from
             // VX and VY on the screen
 
+            assert(false);
             // find coordinates
             uint16_t x = e.regs[sn] % DISPLAY_WIDTH;
             uint16_t y = e.regs[tn] % DISPLAY_HEIGHT;
@@ -141,12 +142,15 @@ int exec (Emulator &e, uint16_t instr) {
             // handle pixel updates
             for (auto i = 0; i != pn; ++i) {
                 for (auto j = 0; j != 8; ++j) {
+                    SDL_Rect rect = {x*TEXEL_SCALE, y*TEXEL_SCALE, TEXEL_SCALE, TEXEL_SCALE};
                     // if current pixel is on and pixel at
                     // (x,y) is also on, then turn off pixel at (x,y)
                     // and set VF to 1
                     uint16_t p = e.membuf[e.I + j];
                     if ((p & (0x80 >> j)) == 1 && e.display[y][x] == 1) {
                         e.display[y][x] = 0;
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                         e.regs[0xF] = 1;
                     }
                     // if current pixel is on and pixel at
@@ -154,6 +158,8 @@ int exec (Emulator &e, uint16_t instr) {
                     // and leave VF as 0
                     else if ((p & (0x80 >> j)) == 1 && e.display[x][y] == 0) {
                         e.display[y][x] = 1;
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
+                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                     }
                 }
             }
@@ -407,32 +413,8 @@ int main () {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
-
             // update display
-            for (auto i = 0; i < DISPLAY_HEIGHT; ++i) {
-                for (auto j = 0; j < DISPLAY_WIDTH; ++j) {
-                    rect.x = j*TEXEL_SCALE;
-                    rect.y = i*TEXEL_SCALE;
-                    
-                    // if pixel is on, draw white
-                    if (e.display[j][i] == 0) {
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
-                    }
-                    // else if pixel is off, draw black
-                    else if (e.display[j][i] == 1) {
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
-                    }
-                    SDL_RenderPresent((SDL_Renderer*)e.renderer);
-
-                    // handle quit
-                    SDL_PollEvent(&s);
-                    if (s.type == SDL_QUIT) {
-                        goto quit;
-                    }
-                }
-            }
+            SDL_RenderPresent((SDL_Renderer*)e.renderer);
             // restrict CPU cycle to ~600 Hz, update timers at 60 Hz
             //msleep(TMSLEEP);
             if (loops % 10 == 0) {
