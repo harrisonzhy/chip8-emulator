@@ -145,11 +145,14 @@ int exec (Emulator &e, uint16_t instr) {
                     // if current pixel is on and pixel at
                     // (x,y) is also on, then turn off pixel at (x,y)
                     // and set VF to 1
+                    assert(e.I + j < MEMSIZE);
                     uint16_t p = e.membuf[e.I + j];
+                    SDL_RenderClear((SDL_Renderer*)e.renderer);
                     if ((p & (0x80 >> j)) == 1 && e.display[y][x] == 1) {
                         e.display[y][x] = 0;
                         SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
                         SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
+                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         e.regs[0xF] = 1;
                     }
                     // if current pixel is on and pixel at
@@ -159,6 +162,7 @@ int exec (Emulator &e, uint16_t instr) {
                         e.display[y][x] = 1;
                         SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                         SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
+                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
                     }
                 }
             }
@@ -382,7 +386,7 @@ int main () {
     //     recttest.y = i*TEXEL_SCALE;
     //     SDL_RenderFillRect((SDL_Renderer*)e.renderer, &recttest);
     // }
-    SDL_RenderPresent((SDL_Renderer*)e.renderer);
+    // SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
     // load stack with 0xFFFF as default
     for (auto i = 0; i != STACKSIZE; ++i) {
@@ -419,6 +423,28 @@ int main () {
             int r = fetch(e, e.PC);
             assert(r == 0);
             // update display
+            // SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
+            // for (auto i = 0; i != DISPLAY_HEIGHT; ++i) {
+            //     for (auto j = 0; j != DISPLAY_WIDTH; ++j) {
+            //         rect.x = j*TEXEL_SCALE;
+            //         rect.y = i*TEXEL_SCALE;
+            //         if (e.display[i][j] == 1) {
+            //             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
+            //             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
+            //             SDL_RenderPresent((SDL_Renderer*)e.renderer);
+            //         }
+            //         else if (e.display[i][j] == 0) {
+            //             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+            //             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
+            //             SDL_RenderPresent((SDL_Renderer*)e.renderer);
+            //         }
+            //         // handle quit
+            //         SDL_PollEvent(&s);
+            //         if (s.type == SDL_QUIT) {
+            //             goto quit;
+            //         }
+            //     }
+            // }
             SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
             //update timers at 60 Hz
