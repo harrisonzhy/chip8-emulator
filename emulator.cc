@@ -5,7 +5,6 @@
 int fetch (Emulator &e, uint16_t i) {
     // combine two 8-bit instructions into a 16-bit instruction
     uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
-    printf("%u\n", instr);
     // read 16-bit instruction
     int r = exec(e, instr);
     if (r != 0) {
@@ -188,8 +187,6 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xF: {
             int s = parse_FNNN(e, instr);
-            //printstack(e);
-            //printf("%u\n", instr);
             assert(s == 0);
             break;
         }
@@ -357,7 +354,6 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         }
     }
     else {
-        //printf("%u\n", instr);
         return -1;
     }
     return 0;
@@ -397,24 +393,25 @@ int main () {
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
     memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);    
 
-    // load game data into 0x200-0xFFF in membuf
-    std::ifstream f(GAME_PATH, std::ios::binary | std::ios::ate);
-    if (!f.is_open()) {
-        return -1;
+    FILE* fptr;
+    char c;
+    uint8_t tbuf[MEMSIZE-ROM_START_ADDR] = {0};
+    fptr = fopen(GAME_PATH, "r");
+    if (fptr) {
+        int i = 0;
+        do {
+            c = fgetc(fptr);
+            tbuf[i] = c;
+            ++i;
+        } while (c != EOF);
+        fclose(fptr);
     }
-    std::streampos sz = f.tellg();
-    char* tbuf = new char[sz];
-    f.seekg(0, std::ios::beg);
-    f.read(tbuf, sz);
-    f.close();
-    for (auto i = 0; i != sz; ++i) {
-        e.membuf[ROM_START_ADDR+i] = tbuf[i];
+    for (auto j = 0; j != MEMSIZE-ROM_START_ADDR; ++j) {
+        e.membuf[ROM_START_ADDR+j] = tbuf[j];
     }
-    delete[] tbuf;
 
     // run game
     SDL_Event s;
-    SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
     while (1) {
         unsigned int loops = 0;
         while (e.PC < MEMSIZE-1) {
@@ -423,8 +420,8 @@ int main () {
             assert(r == 0);
             // update display
             SDL_RenderPresent((SDL_Renderer*)e.renderer);
-            // restrict CPU cycle to ~600 Hz, update timers at 60 Hz
-            //msleep(TMSLEEP);
+
+            //update timers at 60 Hz
             if (loops % 10 == 0) {
                 updatedelaytimer(e);
                 updatesoundtimer(e);

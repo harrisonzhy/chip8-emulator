@@ -3,10 +3,9 @@
 #include <string>
 #include <cassert>
 #include <time.h>
-#include <fstream>
 
 #define MEMSIZE             4096
-#define STACKSIZE           4096
+#define STACKSIZE           0xFF
 #define NREGISTERS          16
 #define ROM_START_ADDR      0x200
 #define DISPLAY_WIDTH       64
@@ -35,11 +34,7 @@ struct Emulator {
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     };
-    uint16_t gamedata[MEMSIZE-ROM_START_ADDR] = 
-    {
-
-    };
-    uint16_t membuf[MEMSIZE] = {0};
+    uint8_t membuf[MEMSIZE] = {0};
     uint16_t stack[STACKSIZE] = {0};
     uint8_t regs[NREGISTERS] = {
         0, 0, 0, 0, // V0-V3
