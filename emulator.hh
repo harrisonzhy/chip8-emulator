@@ -6,7 +6,7 @@
 #include <fstream>
 
 #define MEMSIZE             4096
-#define STACKSIZE           32
+#define STACKSIZE           4096
 #define NREGISTERS          16
 #define ROM_START_ADDR      0x200
 #define DISPLAY_WIDTH       64
@@ -144,4 +144,13 @@ void updatesoundtimer (Emulator &e) {
     if (e.sound_timer != 0) {
         --e.sound_timer;
     }
+}
+
+//  Prints the contents of the stack.
+void printstack (Emulator &e) {
+    for (auto i = 0; i != STACKSIZE; ++i) {
+        printf("|-----| \n");
+        printf("|%u\n", e.stack[i]);
+    }
+    printf("|-----| \n");
 }

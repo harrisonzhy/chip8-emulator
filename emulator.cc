@@ -5,6 +5,7 @@
 int fetch (Emulator &e, uint16_t i) {
     // combine two 8-bit instructions into a 16-bit instruction
     uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
+    printf("%u\n", instr);
     // read 16-bit instruction
     int r = exec(e, instr);
     if (r != 0) {
@@ -130,7 +131,6 @@ int exec (Emulator &e, uint16_t instr) {
             // currently pointing on the screen, as well as from
             // VX and VY on the screen
 
-            assert(false);
             // find coordinates
             uint16_t x = e.regs[sn] % DISPLAY_WIDTH;
             uint16_t y = e.regs[tn] % DISPLAY_HEIGHT;
@@ -188,6 +188,8 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xF: {
             int s = parse_FNNN(e, instr);
+            //printstack(e);
+            //printf("%u\n", instr);
             assert(s == 0);
             break;
         }
@@ -355,6 +357,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         }
     }
     else {
+        //printf("%u\n", instr);
         return -1;
     }
     return 0;
@@ -384,6 +387,11 @@ int main () {
     //     SDL_RenderFillRect((SDL_Renderer*)e.renderer, &recttest);
     // }
     SDL_RenderPresent((SDL_Renderer*)e.renderer);
+
+    // load stack with 0xFFFF as default
+    for (auto i = 0; i != STACKSIZE; ++i) {
+        e.stack[i] = 0xFFFF;
+    }
 
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
