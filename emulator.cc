@@ -142,12 +142,12 @@ int exec (Emulator &e, uint16_t instr) {
                 for (auto j = 1; j != 9; ++j) {
                     rect.y = y + i*TEXEL_SCALE;
                     rect.x = x + (j-1)*TEXEL_SCALE;
-                    // check for no sprite wrapping
+                    //check for no sprite wrapping
                     if (x+j-1 >= DISPLAY_WIDTH || y+i >= DISPLAY_HEIGHT) {
                         break;
                     }
                     // handle display pixel updates
-                    char pixel = (e.I+i >> (j-1)) & 1;
+                    char pixel = (e.membuf[e.I+i] >> (j-1)) & 1;
                     if (pixel == 1 && e.display[y+i][x+j-1] == 1) {
                         e.display[y+i][x+j-1] = 0;
                         e.regs[0xF] = 1;
