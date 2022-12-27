@@ -33,6 +33,8 @@ int exec (Emulator &e, uint16_t instr) {
                         e.display[i][j] = 0;
                     }
                 }
+                SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+                SDL_RenderClear((SDL_Renderer*)e.renderer);
             }
             // 00EE: return from subroutine
             else if (instr == 0x00EE) {
@@ -138,12 +140,10 @@ int exec (Emulator &e, uint16_t instr) {
             e.regs[0xF] = 0;
 
             SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
-                                        SDL_RenderClear((SDL_Renderer*)e.renderer);
-
             for (auto i = 0; i != pn; ++i) {
                 for (auto j = 1; j != 9; ++j) {
-                    rect.y = y*TEXEL_SCALE + i*TEXEL_SCALE;
-                    rect.x = x*TEXEL_SCALE + (j-1)*TEXEL_SCALE;
+                    rect.y = (y*TEXEL_SCALE + i*TEXEL_SCALE) % (DISPLAY_HEIGHT*TEXEL_SCALE);
+                    rect.x = (x*TEXEL_SCALE + (j-1)*TEXEL_SCALE) % (DISPLAY_WIDTH*TEXEL_SCALE);
 
                     // handle display pixel updates
                     char pixel = (e.membuf[e.I+i] >> (j-1)) & 1;
@@ -374,7 +374,6 @@ int main () {
     assert(e.window);
     e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, SDL_RENDERER_ACCELERATED);
     assert(e.renderer);
-    SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
     // SDL_Rect recttest = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
     // SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
