@@ -133,37 +133,35 @@ int exec (Emulator &e, uint16_t instr) {
             // find coordinates
             uint16_t x = e.regs[sn] % DISPLAY_WIDTH;
             uint16_t y = e.regs[tn] % DISPLAY_HEIGHT;
-            e.regs[0xF] = 0;
-
             assert(x < DISPLAY_WIDTH);
             assert(y < DISPLAY_HEIGHT);
+            e.regs[0xF] = 0;
 
-            // handle pixel updates
+            SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             for (auto i = 0; i != pn; ++i) {
-                for (auto j = 0; j != 8; ++j) {
-                    SDL_Rect rect = {x*TEXEL_SCALE, y*TEXEL_SCALE, TEXEL_SCALE, TEXEL_SCALE};
-                    // if current pixel is on and pixel at
-                    // (x,y) is also on, then turn off pixel at (x,y)
-                    // and set VF to 1
-                    assert(e.I + j < MEMSIZE);
-                    uint16_t p = e.membuf[e.I + j];
-                    SDL_RenderClear((SDL_Renderer*)e.renderer);
-                    if ((p & (0x80 >> j)) == 1 && e.display[y][x] == 1) {
-                        e.display[y][x] = 0;
+                for (auto j = 1; j != 9; ++j) {
+                    rect.y = y + i*TEXEL_SCALE;
+                    rect.x = x + (j-1)*TEXEL_SCALE;
+                    // check for no sprite wrapping
+                    if (x+j-1 >= DISPLAY_WIDTH || y+i >= DISPLAY_HEIGHT) {
+                        break;
+                    }
+                    // handle display pixel updates
+                    char pixel = (e.I+i >> (j-1)) & 1;
+                    if (pixel == 1 && e.display[y+i][x+j-1] == 1) {
+                        e.display[y+i][x+j-1] = 0;
+                        e.regs[0xF] = 1;
                         SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
                         SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                         SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                        e.regs[0xF] = 1;
                     }
-                    // if current pixel is on and pixel at
-                    // (x,y) is off, then turn on pixel at (x,y)
-                    // and leave VF as 0
-                    else if ((p & (0x80 >> j)) == 1 && e.display[x][y] == 0) {
+                    else if (pixel == 1 && e.display[y+i][x+j-1] == 0) {
                         e.display[y][x] = 1;
                         SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                         SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                         SDL_RenderPresent((SDL_Renderer*)e.renderer);
                     }
+                    
                 }
             }
             break;
@@ -420,6 +418,7 @@ int main () {
         unsigned int loops = 0;
         while (e.PC < MEMSIZE-1) {
             // fetch and execute instruction at membuf[PC]
+            
             int r = fetch(e, e.PC);
             assert(r == 0);
             // update display
@@ -445,7 +444,7 @@ int main () {
             //         }
             //     }
             // }
-            SDL_RenderPresent((SDL_Renderer*)e.renderer);
+            //SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
             //update timers at 60 Hz
             if (loops % 10 == 0) {
