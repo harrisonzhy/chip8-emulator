@@ -138,30 +138,30 @@ int exec (Emulator &e, uint16_t instr) {
             e.regs[0xF] = 0;
 
             SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
+                                        SDL_RenderClear((SDL_Renderer*)e.renderer);
+
             for (auto i = 0; i != pn; ++i) {
                 for (auto j = 1; j != 9; ++j) {
-                    rect.y = y + i*TEXEL_SCALE;
-                    rect.x = x + (j-1)*TEXEL_SCALE;
-                    //check for no sprite wrapping
-                    if (x+j-1 >= DISPLAY_WIDTH || y+i >= DISPLAY_HEIGHT) {
-                        break;
-                    }
+                    rect.y = y*TEXEL_SCALE + i*TEXEL_SCALE;
+                    rect.x = x*TEXEL_SCALE + (j-1)*TEXEL_SCALE;
+
                     // handle display pixel updates
                     char pixel = (e.membuf[e.I+i] >> (j-1)) & 1;
-                    if (pixel == 1 && e.display[y+i][x+j-1] == 1) {
-                        e.display[y+i][x+j-1] = 0;
-                        e.regs[0xF] = 1;
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
-                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                    }
-                    else if (pixel == 1 && e.display[y+i][x+j-1] == 0) {
-                        e.display[y][x] = 1;
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
-                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                    }
-                    
+                    if (pixel == 1) {
+                        if (e.display[y+i][x+j-1] == 1) {
+                            e.display[y+i][x+j-1] = 0;
+                            e.regs[0xF] = 1;
+                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+                            SDL_RenderDrawRect((SDL_Renderer*)e.renderer, &rect);
+                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
+                        }
+                        else if (e.display[y+i][x+j-1] == 0) {
+                            e.display[y][x] = 1;
+                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
+                            SDL_RenderDrawRect((SDL_Renderer*)e.renderer, &rect);
+                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
+                        }
+                    } 
                 }
             }
             break;
@@ -372,10 +372,9 @@ int main () {
                                 DISPLAY_WIDTH*TEXEL_SCALE, 
                                 DISPLAY_HEIGHT*TEXEL_SCALE, 0);
     assert(e.window);
-    e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, 
-                                    SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
+    e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, SDL_RENDERER_ACCELERATED);
     assert(e.renderer);
-    SDL_RenderClear((SDL_Renderer*)e.renderer);
+    SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
     // SDL_Rect recttest = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
     // SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
@@ -418,9 +417,9 @@ int main () {
         unsigned int loops = 0;
         while (e.PC < MEMSIZE-1) {
             // fetch and execute instruction at membuf[PC]
-            
             int r = fetch(e, e.PC);
             assert(r == 0);
+            
             // update display
             // SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             // for (auto i = 0; i != DISPLAY_HEIGHT; ++i) {
