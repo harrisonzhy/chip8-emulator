@@ -133,35 +133,43 @@ int exec (Emulator &e, uint16_t instr) {
             // VX and VY on the screen
 
             // find coordinates
-            uint16_t x = e.regs[sn] % DISPLAY_WIDTH;
-            uint16_t y = e.regs[tn] % DISPLAY_HEIGHT;
+            uint8_t x = e.regs[sn] % DISPLAY_WIDTH;
+            uint8_t y = e.regs[tn] % DISPLAY_HEIGHT;
             assert(x < DISPLAY_WIDTH);
             assert(y < DISPLAY_HEIGHT);
             e.regs[0xF] = 0;
 
             SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             for (auto i = 0; i != pn; ++i) {
-                for (auto j = 1; j != 9; ++j) {
+                for (auto j = 0; j != 8; ++j) {
                     rect.y = (y*TEXEL_SCALE + i*TEXEL_SCALE) % (DISPLAY_HEIGHT*TEXEL_SCALE);
-                    rect.x = (x*TEXEL_SCALE + (j-1)*TEXEL_SCALE) % (DISPLAY_WIDTH*TEXEL_SCALE);
+                    rect.x = (x*TEXEL_SCALE + j*TEXEL_SCALE) % (DISPLAY_WIDTH*TEXEL_SCALE);
 
                     // handle display pixel updates
-                    char pixel = (e.membuf[e.I+i] >> (j-1)) & 1;
+                    int pixel = (e.membuf[e.I+i] >> j) & 1;
                     if (pixel == 1) {
-                        if (e.display[y+i][x+j-1] == 1) {
-                            e.display[y+i][x+j-1] = 0;
+                        if (e.display[y+i][x+j] == 1) {
+                            e.display[y+i][x+j] = 0;
                             e.regs[0xF] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
-                        else if (e.display[y+i][x+j-1] == 0) {
-                            e.display[y][x] = 1;
+                        else if (e.display[y+i][x+j] == 0) {
+                            e.display[y+i][x+j] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
-                    } 
+                    }
+                    else if (pixel == 0) {
+                        if (e.display[y+i][x+j] == 1) {
+                            e.display[y+i][x+j] = 0;
+                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
+                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
+                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
+                        }
+                    }
                 }
             }
             break;
