@@ -152,13 +152,13 @@ int exec (Emulator &e, uint16_t instr) {
                             e.display[y+i][x+j-1] = 0;
                             e.regs[0xF] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-                            SDL_RenderDrawRect((SDL_Renderer*)e.renderer, &rect);
+                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
                         else if (e.display[y+i][x+j-1] == 0) {
                             e.display[y][x] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-                            SDL_RenderDrawRect((SDL_Renderer*)e.renderer, &rect);
+                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
                     } 
@@ -372,7 +372,7 @@ int main () {
                                 DISPLAY_WIDTH*TEXEL_SCALE, 
                                 DISPLAY_HEIGHT*TEXEL_SCALE, 0);
     assert(e.window);
-    e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, SDL_RENDERER_ACCELERATED);
+    e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, SDL_RENDERER_SOFTWARE);
     assert(e.renderer);
 
     // SDL_Rect recttest = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
@@ -383,7 +383,7 @@ int main () {
     //     SDL_RenderFillRect((SDL_Renderer*)e.renderer, &recttest);
     // }
     // SDL_RenderPresent((SDL_Renderer*)e.renderer);
-
+    
     // load stack with 0xFFFF as default
     for (auto i = 0; i != STACKSIZE; ++i) {
         e.stack[i] = 0xFFFF;
@@ -418,31 +418,6 @@ int main () {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
-            
-            // update display
-            // SDL_Rect rect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
-            // for (auto i = 0; i != DISPLAY_HEIGHT; ++i) {
-            //     for (auto j = 0; j != DISPLAY_WIDTH; ++j) {
-            //         rect.x = j*TEXEL_SCALE;
-            //         rect.y = i*TEXEL_SCALE;
-            //         if (e.display[i][j] == 1) {
-            //             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-            //             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
-            //             SDL_RenderPresent((SDL_Renderer*)e.renderer);
-            //         }
-            //         else if (e.display[i][j] == 0) {
-            //             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-            //             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &rect);
-            //             SDL_RenderPresent((SDL_Renderer*)e.renderer);
-            //         }
-            //         // handle quit
-            //         SDL_PollEvent(&s);
-            //         if (s.type == SDL_QUIT) {
-            //             goto quit;
-            //         }
-            //     }
-            // }
-            //SDL_RenderPresent((SDL_Renderer*)e.renderer);
 
             //update timers at 60 Hz
             if (loops % 10 == 0) {
