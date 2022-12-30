@@ -152,6 +152,7 @@ int exec (Emulator &e, uint16_t instr) {
                     // handle display pixel updates
                     int pixel = (e.membuf[e.I+i] >> j) & 1;
                     if (pixel == 1) {
+                        // 1, 1
                         if (e.display[y+i][x+j] == 1) {
                             e.display[y+i][x+j] = 0;
                             e.regs[0xF] = 1;
@@ -159,6 +160,7 @@ int exec (Emulator &e, uint16_t instr) {
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
+                        // 1, 0
                         else if (e.display[y+i][x+j] == 0) {
                             e.display[y+i][x+j] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
@@ -167,8 +169,16 @@ int exec (Emulator &e, uint16_t instr) {
                         }
                     }
                     else if (pixel == 0) {
+                        // 0, 1
                         if (e.display[y+i][x+j] == 1) {
                             e.display[y+i][x+j] = 0;
+                            //e.regs[0xF] = 1;
+                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
+                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
+                        }
+                        else if (e.display[y+i][x+j] == 0) {
+                            e.display[y+i][x+j] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);
