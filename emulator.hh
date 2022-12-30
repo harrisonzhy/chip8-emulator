@@ -3,9 +3,10 @@
 #include <string>
 #include <cassert>
 #include <time.h>
+#include <random>
 
 #define MEMSIZE             4096
-#define STACKSIZE           0xFF
+#define STACKSIZE           0xFFF
 #define NREGISTERS          16
 #define ROM_START_ADDR      0x200
 #define DISPLAY_WIDTH       64
@@ -73,12 +74,6 @@ int findstackspace (Emulator &e) {
         }
     }
     return -1;
-}
-
-//  Finds address of a given hexadecimal character stored
-//      in a particular register (regval).
-uint16_t findfontindex (uint16_t regval) {
-    return 0x050 + regval * 5;
 }
 
 //  Finds the program counter, i.e. the index of a given

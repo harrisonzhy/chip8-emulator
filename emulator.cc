@@ -118,15 +118,17 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         case 0xB: {
-            // BNNN: jump to address (XNN + VX)
-            e.PC = nnn + e.regs[sn];
+            // BNNN: jump to address (NNN + V0)
+            e.PC = nnn + e.regs[0];
             break;
         }
         case 0xC: {
-            // CXNN: generates random number rn in [0, NN], then 
-            // set VX to rn & NN
-            int rn = std::rand() % (nn + 1) + nn;
-            e.regs[sn] = rn & nn;
+            // CXNN: generates random number rn in [0, NN], 
+            // then set VX to rn & NN
+            std::default_random_engine gen;
+            std::uniform_int_distribution<int> dist(0, nn);
+            uint16_t rand = (uint16_t)dist(gen);
+            e.regs[sn] = rand & nn;
             break;
         }
         case 0xD: {
@@ -177,13 +179,13 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         case 0xE: {
-            char in = check_input();
-            if (!check_keyboard(in)) {
-                break;
-            }
             // EX9E: skip one instruction if key corresponding
             //       to the value in VX is pressed
-            if (tn == 0x9 && pn == 0xE) {                
+            char in = check_input();
+            if (tn == 0x9 && pn == 0xE) {  
+                if (!check_keyboard(in)) {
+                    break;
+                }
                 if (in == e.regs_valkeys[e.regs[sn]]) {
                     e.PC += 2;
                 }
@@ -212,9 +214,11 @@ int exec (Emulator &e, uint16_t instr) {
 
 
 int parse_8NNN (Emulator &e, uint16_t instr) {
+    uint16_t fn  = (0xF000 & instr) >> 12;   // first nibble to obtain op
     uint16_t sn  = (0xF00 & instr) >> 8;     // second nibble to find first reg
     uint16_t tn  = (0xF0 & instr) >> 4;      // third nibble to find second reg
     uint16_t pn  = (0xF & instr);            // fourth nibble
+    assert(fn == 0x8);
 
     switch (pn) {
         case 0x0: {
@@ -240,22 +244,21 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
         case 0x4: {
             // 8XY4: set VX to VX + VY
             e.regs[0xF] = 0;
-            uint8_t vx_prev = e.regs[sn];
             e.regs[sn] += e.regs[tn];
-            // set VF = 1 if 'carry' (overflow) and 0 otherwise
-            if (e.regs[sn] < vx_prev) {
+            // set VF = 1 if 'carry' (overflow)
+            if (e.regs[tn] > UINT8_MAX - e.regs[sn]) {
                 e.regs[0xF] = 1;
             }
             break;
         }
         case 0x5: {
             // 8XY5: set VX to VX - VY
-            // set VF = 0 if `borrow` and 1 otherwise
             e.regs[0xF] = 1;
+            e.regs[sn] -= e.regs[tn];
+            // set VF = 0 if `borrow`
             if (e.regs[sn] < e.regs[tn]) {
                 e.regs[0xF] = 0;
             }
-            e.regs[sn] -= e.regs[tn];
             break;
         }
         case 0x6: {
@@ -263,14 +266,14 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             // 8XY6: set VX to VY, then right bitshift VX and
             //       set VF equal to the value bitshifted out
             if (pn == 0x6) {
-                // set VF to right-bitshifted out
+                // set VF to bit right-shifted out
                 e.regs[0xF] = instr & 0b1;
                 e.regs[sn] = e.regs[sn] >> 1;
             }
             // 8XYE: set VX to VY, then left bitshift VX and
             //       set VF equal to the value bitshifted out
             else if (pn == 0xE) {
-                // set VF to bit-shifted out
+                // set VF to bit left-shifted out
                 e.regs[0xF] = (instr & 0b1000'0000) >> 7;
                 e.regs[sn] = e.regs[sn] << 1;
             }
@@ -278,12 +281,12 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
         }
         case 0x7: {
             // 8XY7: set VX to VY - VX
-            // set VF = 0 if `borrow` and 1 otherwise
             e.regs[0xF] = 1;
+            e.regs[sn] = e.regs[tn] - e.regs[sn];
+            // set VF = 0 if `borrow`
             if (e.regs[tn] < e.regs[sn]) {
                 e.regs[0xF] = 0;
             }
-            e.regs[sn] = e.regs[tn] - e.regs[sn];
             break;
         }
         default: {
@@ -295,9 +298,11 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
 
 
 int parse_FNNN (Emulator &e, uint16_t instr) {
+    uint16_t fn  = (0xF000 & instr) >> 12;   // first nibble to obtain op
     uint16_t sn  = (0xF00 & instr) >> 8;     // second nibble to find first reg
     uint16_t tn  = (0xF0 & instr) >> 4;      // third nibble to find second reg
     uint16_t pn  = (0xF & instr);            // fourth nibble
+    assert(fn == 0xF);
 
     // FX07: set VX to current val of delay timer
     if (tn == 0x0 && pn == 0x7) {
@@ -311,13 +316,10 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     else if (tn == 0x1 && pn == 0x8) {
         e.sound_timer = e.regs[sn];
     }
-    // FX1E: set I to I+VX and set carry flag to 1 if overflow
+    // FX1E: set I to I+VX and set carry flag to 1 if I > 0xFFF
     else if (tn == 0x1 && pn == 0xE) {
-        e.regs[0xF] = 0;
-        uint16_t prev_I = e.I;
         e.I += e.regs[sn];
-        // check overflow
-        if (e.I < prev_I) {
+        if (e.I > 0xFFF) {
             e.regs[0xF] = 1;
         }
     }
@@ -325,10 +327,10 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     //       key is pressed, store its hex in VX
     else if (tn == 0x0 && pn == 0xA) {
         // decrement initially
+        assert(e.PC >= 2);
         e.PC -= 2;
-        assert(e.PC < MEMSIZE);
         char in;
-        while (true) {
+        while (1) {
             in = check_input();
             if (in && check_keyboard(in)) {
                 break;
@@ -340,28 +342,30 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         for (auto i = 0; i != NREGISTERS; ++i) {
             if (in == e.regs_valkeys[i]) {
                 e.regs[sn] = i;
+                break;
             }
         }
     }
     // FX29:
     else if (tn == 0x2 && pn == 0x9) {
-        e.I = findfontindex(e.regs[sn]);
+        uint8_t vx_n = e.regs[sn] & 0xF;
+        e.I = 0x050 + 5*vx_n;
     }
     // FX33: store digits of VX (decimal form) at I, I+1, I+2
     else if (tn == 0x3 && pn == 0x3) {
-        e.membuf[e.I] = (e.regs[sn] / 100) % 10;
+        e.membuf[e.I]   = (e.regs[sn] / 100) % 10;
         e.membuf[e.I+1] = (e.regs[sn] / 10) % 10;
         e.membuf[e.I+2] = (e.regs[sn]) % 10;
     }
-    // FX55: store VX at I+X for X in [0, SIZEOF(e.regs)]
+    // FX55: store VX at index I+X in memory
     else if (tn == 0x5 && pn == 0x5) {
-        for (auto i = 0; i != NREGISTERS; ++i) {
+        for (auto i = 0; i <= sn; ++i) {
             e.membuf[e.I+i] = e.regs[i];
         }
     }
-    // FX65: store the value of I+X into VX
+    // FX65: store the value at I+X in VX
     else if (tn == 0x6 && pn == 0x5) {
-        for (auto i = 0; i != NREGISTERS; ++i) {
+        for (auto i = 0; i <= sn; ++i) {
             e.regs[i] = e.membuf[e.I+i];
         }
     }
