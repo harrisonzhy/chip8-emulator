@@ -145,47 +145,38 @@ int exec (Emulator &e, uint16_t instr) {
 
             SDL_Rect prect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             for (auto i = 0; i != pn; ++i) {
+                std::cout << (int)e.membuf[e.I+i] << "\n";
                 for (auto j = 0; j != 8; ++j) {
                     prect.y = (y*TEXEL_SCALE + i*TEXEL_SCALE) % (DISPLAY_HEIGHT*TEXEL_SCALE);
                     prect.x = (x*TEXEL_SCALE + j*TEXEL_SCALE) % (DISPLAY_WIDTH*TEXEL_SCALE);
 
                     // handle display pixel updates
-                    int pixel = (e.membuf[e.I+i] >> j) & 1;
+                    int pixel = (e.membuf[e.I+i] >> (8-j)) & 1;
+                    assert(pixel == 0 || pixel == 1);
+                    // printf("%d ", pixel);
+
                     if (pixel == 1) {
-                        // 1, 1
-                        if (e.display[y+i][x+j] == 1) {
-                            e.display[y+i][x+j] = 0;
+                        e.display[y+i][x+j] = e.display[y+i][x+j] ^ pixel;
+                        if (e.display[y+i][x+j] == 0) {
+                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
+                        }
+                        else if (e.display[y+i][x+j] == 1) {
                             e.regs[0xF] = 1;
-                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
-                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                        }
-                        // 1, 0
-                        else if (e.display[y+i][x+j] == 0) {
-                            e.display[y+i][x+j] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
-                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
+                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
                     }
-                    else if (pixel == 0) {
-                        // 0, 1
-                        if (e.display[y+i][x+j] == 1) {
-                            e.display[y+i][x+j] = 0;
-                            //e.regs[0xF] = 1;
-                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
-                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                        }
-                        else if (e.display[y+i][x+j] == 0) {
-                            e.display[y+i][x+j] = 1;
-                            SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
-                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                        }
+                    else {
+                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
+                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
+                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
                     }
                 }
+                // printf("\n");
             }
+            // printf("\n");
             break;
         }
         case 0xE: {
@@ -254,11 +245,11 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
         case 0x4: {
             // 8XY4: set VX to VX + VY
             e.regs[0xF] = 0;
-            e.regs[sn] += e.regs[tn];
             // set VF = 1 if 'carry' (overflow)
             if (e.regs[tn] > UINT8_MAX - e.regs[sn]) {
                 e.regs[0xF] = 1;
             }
+            e.regs[sn] += e.regs[tn];
             break;
         }
         case 0x5: {
@@ -430,8 +421,11 @@ int main () {
         } while (c != EOF);
         fclose(fptr);
     }
+    
+
     for (auto j = 0; j != MEMSIZE-ROM_START_ADDR; ++j) {
         e.membuf[ROM_START_ADDR+j] = tbuf[j];
+        std::cout << std::hex << (int)e.membuf[ROM_START_ADDR+j] << "\n";
     }
 
     // run game
@@ -442,6 +436,7 @@ int main () {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
+            // printf("\n\n");
 
             //update timers at 60 Hz
             if (loops % 10 == 0) {

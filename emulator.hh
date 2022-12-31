@@ -4,6 +4,7 @@
 #include <cassert>
 #include <time.h>
 #include <random>
+#include <iostream>
 
 #define MEMSIZE             4096
 #define STACKSIZE           0xFFF
@@ -143,4 +144,14 @@ void printstack (Emulator &e) {
         printf("|%u\n", e.stack[i]);
     }
     printf("|-----| \n");
+}
+
+//  Prints the display.
+void printdisplay (Emulator &e) {
+    for (auto i = 0; i != DISPLAY_HEIGHT; ++i) {
+        for (auto j = 0; j != DISPLAY_WIDTH; ++j) {
+            printf("%d ", e.display[i][j]);
+        }
+        printf("\n");
+    }
 }
