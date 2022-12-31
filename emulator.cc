@@ -323,11 +323,9 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     // FX0A: blocks until key is pressed, then when
     //       key is pressed, store its hex in VX
     else if (tn == 0x0 && pn == 0xA) {
-        assert(false);
         // decrement initially
         assert(e.PC >= 2);
         e.PC -= 2;
-
         while (SDL_PollEvent(&s) == 0 
             || s.type != SDL_QUIT
             || (s.type != SDL_KEYDOWN && check_keyboard() != -1));
@@ -338,7 +336,6 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
             SDL_Quit();
         }
         if (s.type == SDL_KEYDOWN) {
-            // if game key is pressed, store its hex in VX
             e.regs[sn] = check_keyboard();
             // increment so no net change if key pressed
             e.PC += 2;

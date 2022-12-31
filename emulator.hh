@@ -21,7 +21,7 @@
 //  bc_test.ch8     - OK
 //  ibm_logo.ch8    - OK
 //  pong.ch8        - OK
-//  pong2.ch8
+//  pong2.ch8       - OK
 
 struct Emulator {
     uint16_t fontdata[0x09F-0x050+1] =
