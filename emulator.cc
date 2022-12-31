@@ -16,6 +16,8 @@ int fetch (Emulator &e, uint16_t i) {
 
 
 int exec (Emulator &e, uint16_t instr) {
+    std::cout << std::hex << instr << "\n";
+
     uint16_t fn  = (0xF000 & instr) >> 12;   // first nibble to obtain op
     uint16_t sn  = (0xF00 & instr) >> 8;     // second nibble to find first reg
     uint16_t tn  = (0xF0 & instr) >> 4;      // third nibble to find second reg
@@ -118,12 +120,11 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         case 0xB: {
-            // BNNN: jump to address (NNN + V0)
-            e.PC = nnn + e.regs[0];
+            // BNNN: jump to address (NNN + VX)
+            e.PC = nnn + e.regs[sn];
             break;
         }
         case 0xC: {
-            std::cout << std::hex << instr << "\n";
             // CXNN: generates random number rn in [0, NN], 
             // then set VX to rn & NN
             std::default_random_engine gen;
@@ -157,6 +158,9 @@ int exec (Emulator &e, uint16_t instr) {
                     // printf("%d ", pixel);
 
                     if (pixel == 1) {
+                        if (e.display[y+i][x+j] == 1) {
+                            e.regs[0xF] = 1;
+                        }
                         e.display[y+i][x+j] = e.display[y+i][x+j] ^ pixel;
                         if (e.display[y+i][x+j] == 0) {
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
@@ -164,7 +168,6 @@ int exec (Emulator &e, uint16_t instr) {
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);   
                         }
                         else if (e.display[y+i][x+j] == 1) {
-                            e.regs[0xF] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
                             SDL_RenderPresent((SDL_Renderer*)e.renderer);
@@ -184,7 +187,7 @@ int exec (Emulator &e, uint16_t instr) {
                 if (!check_keyboard(in)) {
                     break;
                 }
-                if (in == e.regs_valkeys[e.regs[sn]]) {
+                else if (in == e.regs_valkeys[e.regs[sn]]) {
                     e.PC += 2;
                 }
             }
@@ -199,7 +202,7 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xF: {
             int s = parse_FNNN(e, instr);
-            assert(s == 0);
+            // assert(s == 0);
             break;
         }
         default: {
@@ -343,7 +346,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         }
     }
     // FX29:
-    else if (tn == 0x2 && pn == 0x9) {
+    else if (tn == 0x2 && pn == 0x9) {std::cout << std::hex << instr << "\n";
         uint8_t vx_n = e.regs[sn] & 0xF;
         e.I = 0x050 + 5*vx_n;
     }
@@ -385,15 +388,6 @@ int main () {
     e.renderer = SDL_CreateRenderer((SDL_Window*)e.window, -1, SDL_RENDERER_SOFTWARE);
     assert(e.renderer);
 
-    // SDL_Rect recttest = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
-    // SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-    // for (auto i = 0; i != DISPLAY_WIDTH; ++i) {
-    //     recttest.x = i*TEXEL_SCALE;
-    //     recttest.y = i*TEXEL_SCALE;
-    //     SDL_RenderFillRect((SDL_Renderer*)e.renderer, &recttest);
-    // }
-    // SDL_RenderPresent((SDL_Renderer*)e.renderer);
-    
     // load stack with 0xFFFF as default
     for (auto i = 0; i != STACKSIZE; ++i) {
         e.stack[i] = 0xFFFF;

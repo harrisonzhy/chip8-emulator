@@ -14,7 +14,12 @@
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
 #define TMSLEEP             1850
-#define GAME_PATH           "test_opcode.ch8"
+#define GAME_PATH           "ibm_logo.ch8"
+
+// TESTS
+//  test_opcode.ch8
+//  bc_test.ch8
+//  ibm_logo.ch8
 
 struct Emulator {
     uint16_t fontdata[0x09F-0x050+1] =
