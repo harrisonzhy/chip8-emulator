@@ -14,13 +14,14 @@
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
 #define TMSLEEP             1850
-#define GAME_PATH           "pong.ch8"
+#define GAME_PATH           "pong2.ch8"
 
 // TESTS
-//  test_opcode.ch8
-//  bc_test.ch8
-//  ibm_logo.ch8
+//  test_opcode.ch8 - OK
+//  bc_test.ch8     - OK
+//  ibm_logo.ch8    - OK
 //  pong.ch8
+//  pong2.ch8
 
 struct Emulator {
     uint16_t fontdata[0x09F-0x050+1] =
@@ -52,10 +53,12 @@ struct Emulator {
     };
     uint16_t I;     // index
     char regs_valkeys[NREGISTERS] = {
-        'x', '1', '2', '3', // 0-3
-        'q', 'w', 'e', 'a', // 4-7
-        's', 'd', 'z', 'c', // 7-11
-        '4', 'r', 'f', 'v'  // 11-15
+        'x',
+        '1', '2', '3',
+        'q', 'w', 'e',
+        'a', 's', 'd',
+        'z', 'c', '4',
+        'r', 'f', 'v'
     };
     uint16_t PC = ROM_START_ADDR;
     uint8_t delay_timer = UINT8_MAX;

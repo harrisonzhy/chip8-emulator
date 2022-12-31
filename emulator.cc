@@ -268,10 +268,10 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             break;
         }
         case 0x6: {
-            // 8XY6: set VX to VY, then right bitshift VX and
-            //       set VF equal to the value bitshifted out
-            e.regs[sn] = e.regs[tn];
-            e.regs[0xF] = instr & 0b1;
+            // 8XY6: Right bitshift VX and set VF 
+            //       equal to the value bitshifted out
+            //e.regs[sn] = e.regs[tn];
+            e.regs[0xF] = e.regs[sn] & 0b1;
             e.regs[sn] = e.regs[sn] >> 1;
             break;
         }
@@ -286,10 +286,9 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             break;
         }
         case 0xE: {
-            // 8XYE: set VX to VY, then left bitshift VX and
-            //       set VF equal to the value bitshifted out
-            e.regs[sn] = e.regs[tn];
-            e.regs[0xF] = (instr & 0b1000'0000) >> 7;
+            // 8XYE: Left bitshift VX and set VF
+            //       equal to the value bitshifted out
+            e.regs[0xF] = (e.regs[sn] & 0b1000'0000) >> 7;
             e.regs[sn] = e.regs[sn] << 1;
             break;
         }
@@ -330,6 +329,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     // FX0A: blocks until key is pressed, then when
     //       key is pressed, store its hex in VX
     else if (tn == 0x0 && pn == 0xA) {
+        assert(false);
         // decrement initially
         assert(e.PC >= 2);
         e.PC -= 2;
@@ -348,6 +348,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
                     e.PC += 2;
                     break;
                 }
+                continue;
             }
         }
     }
@@ -458,18 +459,20 @@ int main () {
     }
 
     // load font data into 0x050-0x09F in membuf
-    uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
-    memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);
+    for (auto j = 0; j != 0x09F-0x050+1; ++j) {
+        e.membuf[0x050+j] = e.fontdata[j];
+    }
 
+    // load game data into 0x200-0xFFF in membuf
     FILE* fptr;
-    char c;
     uint8_t tbuf[MEMSIZE-ROM_START_ADDR] = {0};
     fptr = fopen(GAME_PATH, "r");
-    if (fptr) {
-        fread(tbuf, MEMSIZE-ROM_START_ADDR, 1, fptr);
+    if (!fptr) {
+        return -1;
     }
-    for (auto j = 0; j != MEMSIZE-ROM_START_ADDR; ++j) {
-        e.membuf[ROM_START_ADDR+j] = tbuf[j];
+    fread(tbuf, MEMSIZE-ROM_START_ADDR, 1, fptr);
+    for (auto k = 0; k != MEMSIZE-ROM_START_ADDR; ++k) {
+        e.membuf[ROM_START_ADDR+k] = tbuf[k];
         // std::cout << std::hex << (int)e.membuf[ROM_START_ADDR+j] << "\n";
     }
 
