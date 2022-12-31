@@ -113,13 +113,14 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         case 0xA: {
+            std::cout << std::hex << instr << "\n";
             // ANNN: set I to NNN
             e.I = nnn;
             break;
         }
         case 0xB: {
-            // BNNN: jump to address (NNN + V0)
-            e.PC = nnn + e.regs[0];
+            // BNNN: jump to address (NNN + VX)
+            e.PC = nnn + e.regs[sn];
             break;
         }
         case 0xC: {
@@ -145,7 +146,7 @@ int exec (Emulator &e, uint16_t instr) {
 
             SDL_Rect prect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             for (auto i = 0; i != pn; ++i) {
-                std::cout << (int)e.membuf[e.I+i] << "\n";
+                // std::cout << (int)e.membuf[e.I+i] << "\n";
                 for (auto j = 0; j != 8; ++j) {
                     prect.y = (y*TEXEL_SCALE + i*TEXEL_SCALE) % (DISPLAY_HEIGHT*TEXEL_SCALE);
                     prect.x = (x*TEXEL_SCALE + j*TEXEL_SCALE) % (DISPLAY_WIDTH*TEXEL_SCALE);
@@ -160,18 +161,14 @@ int exec (Emulator &e, uint16_t instr) {
                         if (e.display[y+i][x+j] == 0) {
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
+                            SDL_RenderPresent((SDL_Renderer*)e.renderer);   
                         }
                         else if (e.display[y+i][x+j] == 1) {
                             e.regs[0xF] = 1;
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
                             SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
+                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
-                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                    }
-                    else {
-                        SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
-                        SDL_RenderPresent((SDL_Renderer*)e.renderer);
                     }
                 }
                 // printf("\n");
@@ -266,18 +263,8 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             e.regs[sn] = e.regs[tn];
             // 8XY6: set VX to VY, then right bitshift VX and
             //       set VF equal to the value bitshifted out
-            if (pn == 0x6) {
-                // set VF to bit right-shifted out
-                e.regs[0xF] = instr & 0b1;
-                e.regs[sn] = e.regs[sn] >> 1;
-            }
-            // 8XYE: set VX to VY, then left bitshift VX and
-            //       set VF equal to the value bitshifted out
-            else if (pn == 0xE) {
-                // set VF to bit left-shifted out
-                e.regs[0xF] = (instr & 0b1000'0000) >> 7;
-                e.regs[sn] = e.regs[sn] << 1;
-            }
+            e.regs[0xF] = instr & 0b1;
+            e.regs[sn] = e.regs[sn] >> 1;
             break;
         }
         case 0x7: {
@@ -288,6 +275,13 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             if (e.regs[tn] < e.regs[sn]) {
                 e.regs[0xF] = 0;
             }
+            break;
+        }
+        case 0xE: {
+            // 8XYE: set VX to VY, then left bitshift VX and
+            //       set VF equal to the value bitshifted out
+            e.regs[0xF] = (instr & 0b1000'0000) >> 7;
+            e.regs[sn] = e.regs[sn] << 1;
             break;
         }
         default: {
@@ -406,26 +400,18 @@ int main () {
 
     // load font data into 0x050-0x09F in membuf
     uintptr_t fdest = (uintptr_t)(&e.membuf[0]) + 0x050;
-    memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);    
+    memcpy((void*)fdest, (void*)(&e.fontdata[0]), 0x09F-0x050+1);
 
     FILE* fptr;
     char c;
     uint8_t tbuf[MEMSIZE-ROM_START_ADDR] = {0};
     fptr = fopen(GAME_PATH, "r");
     if (fptr) {
-        int i = 0;
-        do {
-            c = fgetc(fptr);
-            tbuf[i] = c;
-            ++i;
-        } while (c != EOF);
-        fclose(fptr);
+        fread(tbuf, MEMSIZE-ROM_START_ADDR, 1, fptr);
     }
-    
-
     for (auto j = 0; j != MEMSIZE-ROM_START_ADDR; ++j) {
         e.membuf[ROM_START_ADDR+j] = tbuf[j];
-        std::cout << std::hex << (int)e.membuf[ROM_START_ADDR+j] << "\n";
+        // std::cout << std::hex << (int)e.membuf[ROM_START_ADDR+j] << "\n";
     }
 
     // run game
