@@ -14,7 +14,7 @@
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
 #define TMSLEEP             1850
-#define GAME_PATH           "ibm_logo.ch8"
+#define GAME_PATH           "bc_test.ch8"
 
 // TESTS
 //  test_opcode.ch8

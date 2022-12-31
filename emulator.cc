@@ -5,12 +5,12 @@
 int fetch (Emulator &e, uint16_t i) {
     // combine two 8-bit instructions into a 16-bit instruction
     uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
+    e.PC += 2;
     // read 16-bit instruction
     int r = exec(e, instr);
     if (r != 0) {
         return -1;
     }
-    e.PC += 2;
     return 0;
 }
 
@@ -29,13 +29,13 @@ int exec (Emulator &e, uint16_t instr) {
     switch (fn) {
         case 0x0: {
             // 00E0: clear display
-            SDL_Rect crect = {0, 0, DISPLAY_HEIGHT*TEXEL_SCALE, DISPLAY_WIDTH*TEXEL_SCALE};
             if (instr == 0x00E0) {
                 for (auto i = 0; i < DISPLAY_HEIGHT; ++i) {
                     for (auto j = 0; j < DISPLAY_WIDTH; ++j) {
                         e.display[i][j] = 0;
                     }
                 }
+                SDL_Rect crect = {0, 0, DISPLAY_HEIGHT*TEXEL_SCALE, DISPLAY_WIDTH*TEXEL_SCALE};
                 SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
                 SDL_RenderFillRect((SDL_Renderer*)e.renderer, &crect);
                 SDL_RenderPresent((SDL_Renderer*)e.renderer);
@@ -85,8 +85,10 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0x5: {
             // 5XY0: skip one instruction if VX == VY
-            if (e.regs[sn] == e.regs[tn]) {
-                e.PC += 2;
+            if (pn == 0x0) {
+                if (e.regs[sn] == e.regs[tn]) {
+                    e.PC += 2;
+                }
             }
             break;
         }
@@ -109,8 +111,10 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0x9: {
             // 9XY0: skip one instruction if VX != VY
-            if (e.regs[sn] != e.regs[tn]) {
-                e.PC += 2;
+            if (pn == 0x0) {
+                if (e.regs[sn] != e.regs[tn]) {
+                    e.PC += 2;
+                }
             }
             break;
         }
@@ -202,7 +206,7 @@ int exec (Emulator &e, uint16_t instr) {
         }
         case 0xF: {
             int s = parse_FNNN(e, instr);
-            // assert(s == 0);
+            assert(s == 0);
             break;
         }
         default: {
@@ -255,35 +259,36 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
         }
         case 0x5: {
             // 8XY5: set VX to VX - VY
+            // set VF = 0 if `borrow` and 1 otherwise
             e.regs[0xF] = 1;
-            e.regs[sn] = e.regs[sn] - e.regs[tn];
-            // set VF = 0 if `borrow`
             if (e.regs[sn] < e.regs[tn]) {
                 e.regs[0xF] = 0;
             }
+            e.regs[sn] = e.regs[sn] - e.regs[tn];
             break;
         }
         case 0x6: {
-            e.regs[sn] = e.regs[tn];
             // 8XY6: set VX to VY, then right bitshift VX and
             //       set VF equal to the value bitshifted out
+            e.regs[sn] = e.regs[tn];
             e.regs[0xF] = instr & 0b1;
             e.regs[sn] = e.regs[sn] >> 1;
             break;
         }
         case 0x7: {
             // 8XY7: set VX to VY - VX
+            // set VF = 0 if `borrow` and 1 otherwise
             e.regs[0xF] = 1;
-            e.regs[sn] = e.regs[tn] - e.regs[sn];
-            // set VF = 0 if `borrow`
             if (e.regs[tn] < e.regs[sn]) {
                 e.regs[0xF] = 0;
             }
+            e.regs[sn] = e.regs[tn] - e.regs[sn];
             break;
         }
         case 0xE: {
             // 8XYE: set VX to VY, then left bitshift VX and
             //       set VF equal to the value bitshifted out
+            e.regs[sn] = e.regs[tn];
             e.regs[0xF] = (instr & 0b1000'0000) >> 7;
             e.regs[sn] = e.regs[sn] << 1;
             break;
@@ -346,7 +351,7 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         }
     }
     // FX29:
-    else if (tn == 0x2 && pn == 0x9) {std::cout << std::hex << instr << "\n";
+    else if (tn == 0x2 && pn == 0x9) {
         uint8_t vx_n = e.regs[sn] & 0xF;
         e.I = 0x050 + 5*vx_n;
     }
