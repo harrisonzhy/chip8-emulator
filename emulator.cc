@@ -113,17 +113,17 @@ int exec (Emulator &e, uint16_t instr) {
             break;
         }
         case 0xA: {
-            std::cout << std::hex << instr << "\n";
             // ANNN: set I to NNN
             e.I = nnn;
             break;
         }
         case 0xB: {
-            // BNNN: jump to address (NNN + VX)
-            e.PC = nnn + e.regs[sn];
+            // BNNN: jump to address (NNN + V0)
+            e.PC = nnn + e.regs[0];
             break;
         }
         case 0xC: {
+            std::cout << std::hex << instr << "\n";
             // CXNN: generates random number rn in [0, NN], 
             // then set VX to rn & NN
             std::default_random_engine gen;
@@ -243,7 +243,8 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
             // 8XY4: set VX to VX + VY
             e.regs[0xF] = 0;
             // set VF = 1 if 'carry' (overflow)
-            if (e.regs[tn] > UINT8_MAX - e.regs[sn]) {
+            if (e.regs[tn] > UINT8_MAX - e.regs[sn]
+             || e.regs[sn] > UINT8_MAX - e.regs[tn]) {
                 e.regs[0xF] = 1;
             }
             e.regs[sn] += e.regs[tn];
@@ -252,7 +253,7 @@ int parse_8NNN (Emulator &e, uint16_t instr) {
         case 0x5: {
             // 8XY5: set VX to VX - VY
             e.regs[0xF] = 1;
-            e.regs[sn] -= e.regs[tn];
+            e.regs[sn] = e.regs[sn] - e.regs[tn];
             // set VF = 0 if `borrow`
             if (e.regs[sn] < e.regs[tn]) {
                 e.regs[0xF] = 0;
