@@ -14,12 +14,13 @@
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
 #define TMSLEEP             1850
-#define GAME_PATH           "bc_test.ch8"
+#define GAME_PATH           "pong.ch8"
 
 // TESTS
 //  test_opcode.ch8
 //  bc_test.ch8
 //  ibm_logo.ch8
+//  pong.ch8
 
 struct Emulator {
     uint16_t fontdata[0x09F-0x050+1] =
@@ -101,7 +102,7 @@ int parse_8NNN (Emulator &e, uint16_t instr);
 int parse_FNNN (Emulator &e, uint16_t instr);
 
 //  Scans for character inputs.
-char check_input() {    
+char check_input() {
     char key;
     int r = scanf(" %c", &key);
     assert(r == 0 || r == 1);
@@ -109,7 +110,7 @@ char check_input() {
 }
 
 //  Checks if character input corresponds to a hexadecimal value.
-int check_keyboard(char &key) {
+int check_keyboard(char key) {
     return
         (
         key == '1' || key == '2' || key == '3' || key == '4' ||

@@ -5,6 +5,7 @@
 int fetch (Emulator &e, uint16_t i) {
     // combine two 8-bit instructions into a 16-bit instruction
     uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
+    std::cout << std::hex << instr << "\n";
     e.PC += 2;
     // read 16-bit instruction
     int r = exec(e, instr);
@@ -16,8 +17,6 @@ int fetch (Emulator &e, uint16_t i) {
 
 
 int exec (Emulator &e, uint16_t instr) {
-    std::cout << std::hex << instr << "\n";
-
     uint16_t fn  = (0xF000 & instr) >> 12;   // first nibble to obtain op
     uint16_t sn  = (0xF00 & instr) >> 8;     // second nibble to find first reg
     uint16_t tn  = (0xF0 & instr) >> 4;      // third nibble to find second reg
@@ -186,8 +185,8 @@ int exec (Emulator &e, uint16_t instr) {
         case 0xE: {
             // EX9E: skip one instruction if key corresponding
             //       to the value in VX is pressed
-            char in = check_input();
-            if (tn == 0x9 && pn == 0xE) {  
+            char in = std::cin.get();
+            if (tn == 0x9 && pn == 0xE) {
                 if (!check_keyboard(in)) {
                     break;
                 }
@@ -334,12 +333,10 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         assert(e.PC >= 2);
         e.PC -= 2;
         char in;
-        while (1) {
-            in = check_input();
-            if (in && check_keyboard(in)) {
-                break;
-            }
-        }
+        do {
+            in = std::cin.get();
+            // blocks until key is pressed
+        } while (!check_keyboard(in));
         // increment so no net change if key pressed
         e.PC += 2;
         // store hex val (index in e.regs_valkeys) of key in VX
