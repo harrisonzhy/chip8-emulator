@@ -109,16 +109,8 @@ char check_input() {
     return key;
 }
 
-//  Checks if character input corresponds to a hexadecimal value.
-int check_keyboard(char key) {
-    return
-        (
-        key == '1' || key == '2' || key == '3' || key == '4' ||
-        key == 'q' || key == 'w' || key == 'e' || key == 'r' ||
-        key == 'a' || key == 's' || key == 'd' || key == 'f' ||
-        key == 'z' || key == 'x' || key == 'c' || key == 'v'
-        );
-}
+//  Checks if a game key is pressed.
+int check_keyboard();
 
 //  Sleeps for `tms` milliseconds.
 void msleep(long tms) {

@@ -1,11 +1,12 @@
 #include "emulator.hh"
 #include <SDL2/SDL.h>
 
+SDL_Event s;
 
 int fetch (Emulator &e, uint16_t i) {
     // combine two 8-bit instructions into a 16-bit instruction
     uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
-    std::cout << std::hex << instr << "\n";
+     std::cout << std::hex << instr << "\n";
     e.PC += 2;
     // read 16-bit instruction
     int r = exec(e, instr);
@@ -156,7 +157,7 @@ int exec (Emulator &e, uint16_t instr) {
                     prect.x = (x*TEXEL_SCALE + j*TEXEL_SCALE) % (DISPLAY_WIDTH*TEXEL_SCALE);
 
                     // handle display pixel updates
-                    int pixel = (e.membuf[e.I+i] >> (8-j)) & 1;
+                    int pixel = (e.membuf[e.I+i] >> (7-j)) & 1;
                     assert(pixel == 0 || pixel == 1);
                     // printf("%d ", pixel);
 
@@ -185,20 +186,20 @@ int exec (Emulator &e, uint16_t instr) {
         case 0xE: {
             // EX9E: skip one instruction if key corresponding
             //       to the value in VX is pressed
-            char in = std::cin.get();
             if (tn == 0x9 && pn == 0xE) {
-                if (!check_keyboard(in)) {
-                    break;
-                }
-                else if (in == e.regs_valkeys[e.regs[sn]]) {
-                    e.PC += 2;
+                if (s.type == SDL_KEYDOWN) {
+                    if (check_keyboard() == e.regs[sn]) {
+                        e.PC += 2;
+                    }
                 }
             }
             // EXA1: skip one instruction if key corresponding
             //       to the value in VX is not pressed
             else if (tn == 0xA && pn == 0x1) {
-                if (in != e.regs_valkeys[e.regs[sn]]) {
-                    e.PC += 2;
+                if (s.type == SDL_KEYDOWN) {
+                    if (check_keyboard() != e.regs[sn]) {
+                        e.PC += 2;
+                    }
                 }
             }
             break;
@@ -332,18 +333,21 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         // decrement initially
         assert(e.PC >= 2);
         e.PC -= 2;
-        char in;
-        do {
-            in = std::cin.get();
-            // blocks until key is pressed
-        } while (!check_keyboard(in));
-        // increment so no net change if key pressed
-        e.PC += 2;
-        // store hex val (index in e.regs_valkeys) of key in VX
-        for (auto i = 0; i != NREGISTERS; ++i) {
-            if (in == e.regs_valkeys[i]) {
-                e.regs[sn] = i;
-                break;
+        while (SDL_PollEvent(&s) != 0) {
+            if (s.type == SDL_QUIT) {
+                SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
+                SDL_DestroyWindow((SDL_Window*)e.window);
+                SDL_Quit();
+            }
+            if (s.type == SDL_KEYDOWN) {
+                // if game key is pressed, store its hex in VX
+                int r = check_keyboard();
+                if (r != -1) {
+                    e.regs[sn] = r;
+                    // increment so no net change if key pressed
+                    e.PC += 2;
+                    break;
+                }
             }
         }
     }
@@ -376,6 +380,64 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
     return 0;
 }
 
+
+int check_keyboard () {
+    assert(s.type == SDL_KEYDOWN);
+    switch (s.key.keysym.sym) {
+        case SDLK_x: {
+            return 0x0;
+        }
+        case SDLK_1: {
+            return 0x1;
+        }
+        case SDLK_2: {
+            return 0x2;
+        }
+        case SDLK_3: {
+            return 0x3;
+        }
+        case SDLK_q: {
+            return 0x4;
+        }
+        case SDLK_w: {
+            return 0x5;
+        }
+        case SDLK_e: {
+            return 0x6;
+        }
+        case SDLK_a: {
+            return 0x7;
+        }
+        case SDLK_s: {
+            return 0x8;
+        }
+        case SDLK_d: {
+            return 0x9;
+        }
+        case SDLK_z: {
+            return 0xA;
+        }
+        case SDLK_c: {
+            return 0xB;
+        }
+        case SDLK_4: {
+            return 0xC;
+        }
+        case SDLK_r: {
+            return 0xD;
+        }
+        case SDLK_f: {
+            return 0xE;
+        }
+        case SDLK_v: {
+            return 0xF;
+        }
+        default: {
+            return -1;
+        }
+    }
+    return -1;
+}
 
 int main () {
     // create emulator and display
@@ -412,7 +474,6 @@ int main () {
     }
 
     // run game
-    SDL_Event s;
     while (1) {
         unsigned int loops = 0;
         while (e.PC < MEMSIZE-1) {
