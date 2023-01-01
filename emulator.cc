@@ -6,7 +6,6 @@ SDL_Event s;
 int fetch (Emulator &e, uint16_t i) {
     // combine two 8-bit instructions into a 16-bit instruction
     uint16_t instr = e.membuf[i] << 8 | e.membuf[i+1];
-    // std::cout << std::hex << instr << "\n";
     e.PC += 2;
     // read 16-bit instruction
     int r = exec(e, instr);
@@ -151,7 +150,6 @@ int exec (Emulator &e, uint16_t instr) {
 
             SDL_Rect prect = {0, 0, TEXEL_SCALE, TEXEL_SCALE};
             for (auto i = 0; i != pn; ++i) {
-                // std::cout << (int)e.membuf[e.I+i] << "\n";
                 for (auto j = 0; j != 8; ++j) {
                     prect.y = (y*TEXEL_SCALE + i*TEXEL_SCALE) % (DISPLAY_HEIGHT*TEXEL_SCALE);
                     prect.x = (x*TEXEL_SCALE + j*TEXEL_SCALE) % (DISPLAY_WIDTH*TEXEL_SCALE);
@@ -159,7 +157,6 @@ int exec (Emulator &e, uint16_t instr) {
                     // handle display pixel updates
                     int pixel = (e.membuf[e.I+i] >> (7-j)) & 1;
                     assert(pixel == 0 || pixel == 1);
-                    // printf("%d ", pixel);
 
                     if (pixel == 1) {
                         if (e.display[y+i][x+j] == 1) {
@@ -176,9 +173,7 @@ int exec (Emulator &e, uint16_t instr) {
                     }
                 }
                 SDL_RenderPresent((SDL_Renderer*)e.renderer);
-                // printf("\n");
             }
-            // printf("\n");
             break;
         }
         case 0xE: {
@@ -469,7 +464,6 @@ int main () {
     fread(tbuf, MEMSIZE-ROM_START_ADDR, 1, fptr);
     for (auto k = 0; k != MEMSIZE-ROM_START_ADDR; ++k) {
         e.membuf[ROM_START_ADDR+k] = tbuf[k];
-        // std::cout << std::hex << (int)e.membuf[ROM_START_ADDR+j] << "\n";
     }
 
     // run game

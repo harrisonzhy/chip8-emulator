@@ -1,10 +1,7 @@
 #include <cstdlib>
-#include <cstdio>
 #include <string>
 #include <cassert>
-#include <time.h>
 #include <random>
-#include <iostream>
 
 #define MEMSIZE             4096
 #define STACKSIZE           0xFFF
@@ -14,6 +11,7 @@
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
 #define GAME_PATH           "tests/invaders.ch8"
+#define SOUND_PATH          "beep.mp3"
 
 // TESTS
 //  test_opcode.ch8     - OK

@@ -9,7 +9,7 @@ OBJS = emulator.cc
 
 COMPILER_FLAGS =
 
-LINKER_FLAGS = -F/Library/Frameworks -lSDL2 -lSDL_mixer
+LINKER_FLAGS = -F/Library/Frameworks -lSDL2
 
 emu : $(OBJS)
 	$(CC) $(OBJS) $(INCLUDE_PATHS) $(LIBRARY_PATHS) $(COMPILER_FLAGS) $(LINKER_FLAGS) -o emulator
