@@ -35,7 +35,7 @@ int exec (Emulator &e, uint16_t instr) {
                         e.display[i][j] = 0;
                     }
                 }
-                SDL_Rect crect = {0, 0, DISPLAY_HEIGHT*TEXEL_SCALE, DISPLAY_WIDTH*TEXEL_SCALE};
+                SDL_Rect crect = {0, 0, DISPLAY_WIDTH*TEXEL_SCALE, DISPLAY_HEIGHT*TEXEL_SCALE};
                 SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
                 SDL_RenderFillRect((SDL_Renderer*)e.renderer, &crect);
                 SDL_RenderPresent((SDL_Renderer*)e.renderer);
@@ -168,16 +168,14 @@ int exec (Emulator &e, uint16_t instr) {
                         e.display[y+i][x+j] = e.display[y+i][x+j] ^ pixel;
                         if (e.display[y+i][x+j] == 0) {
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0x00, 0x00, 0x00, SDL_ALPHA_OPAQUE);
-                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
-                            SDL_RenderPresent((SDL_Renderer*)e.renderer);   
                         }
                         else if (e.display[y+i][x+j] == 1) {
                             SDL_SetRenderDrawColor((SDL_Renderer*)e.renderer, 0xFF, 0xFF, 0xFF, SDL_ALPHA_OPAQUE);
-                            SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
-                            SDL_RenderPresent((SDL_Renderer*)e.renderer);
                         }
+                        SDL_RenderFillRect((SDL_Renderer*)e.renderer, &prect);
                     }
                 }
+                SDL_RenderPresent((SDL_Renderer*)e.renderer);
                 // printf("\n");
             }
             // printf("\n");
@@ -326,19 +324,29 @@ int parse_FNNN (Emulator &e, uint16_t instr) {
         // decrement initially
         assert(e.PC >= 2);
         e.PC -= 2;
-        while (SDL_PollEvent(&s) == 0 
-            || s.type != SDL_QUIT
-            || (s.type != SDL_KEYDOWN && check_keyboard() != -1));
-        
-        if (s.type == SDL_QUIT) {
-            SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
-            SDL_DestroyWindow((SDL_Window*)e.window);
-            SDL_Quit();
-        }
-        if (s.type == SDL_KEYDOWN) {
-            e.regs[sn] = check_keyboard();
-            // increment so no net change if key pressed
-            e.PC += 2;
+        unsigned long loops = 0;
+        while (1) {
+            SDL_PollEvent(&s);
+            if (s.type == SDL_QUIT) {
+                SDL_DestroyRenderer((SDL_Renderer*)e.renderer);
+                SDL_DestroyWindow((SDL_Window*)e.window);
+                SDL_Quit();
+            }
+            if (s.type == SDL_KEYDOWN) {
+                int r = check_keyboard();
+                if (r != -1) {
+                    e.regs[sn] = r;
+                    // increment so no net change if key pressed
+                    e.PC += 2;
+                    break;
+                }
+            }
+            // update timers at 60 Hz
+            if (loops % 8 == 0) {
+                updatedelaytimer(e);
+                updatesoundtimer(e);
+            }
+            ++loops;
         }
     }
     // FX29:
@@ -466,19 +474,11 @@ int main () {
 
     // run game
     while (1) {
-        unsigned int loops = 0;
+        unsigned long loops = 0;
         while (e.PC < MEMSIZE-1) {
             // fetch and execute instruction at membuf[PC]
             int r = fetch(e, e.PC);
             assert(r == 0);
-            // printf("\n\n");
-
-            //update timers at 60 Hz
-            if (loops % 10 == 0) {
-                updatedelaytimer(e);
-                updatesoundtimer(e);
-            }
-
             if (SDL_PollEvent(&s) != 0) {
                 switch (s.type) {
                     case SDL_QUIT: {
@@ -495,6 +495,11 @@ int main () {
                         break;
                     }
                 }
+            }
+            // update timers at 60 Hz
+            if (loops % 8 == 0) {
+                updatedelaytimer(e);
+                updatesoundtimer(e);
             }
             ++loops;
         }

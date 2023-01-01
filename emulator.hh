@@ -13,15 +13,15 @@
 #define DISPLAY_WIDTH       64
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
-#define TMSLEEP             1850
-#define GAME_PATH           "pong.ch8"
+#define GAME_PATH           "tests/invaders.ch8"
 
 // TESTS
-//  test_opcode.ch8 - OK
-//  bc_test.ch8     - OK
-//  ibm_logo.ch8    - OK
-//  pong.ch8        - OK
-//  pong2.ch8       - OK
+//  test_opcode.ch8     - OK
+//  bc_test.ch8         - OK
+//  ibm_logo.ch8        - OK
+//  pong.ch8            - OK
+//  pong2.ch8           - OK
+//  invaders.ch8        - OK
 
 struct Emulator {
     uint16_t fontdata[0x09F-0x050+1] =
