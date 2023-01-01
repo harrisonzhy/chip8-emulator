@@ -100,14 +100,6 @@ int parse_8NNN (Emulator &e, uint16_t instr);
 //  Parses FNNN instructions.
 int parse_FNNN (Emulator &e, uint16_t instr);
 
-//  Scans for character inputs.
-char check_input() {
-    char key;
-    int r = scanf(" %c", &key);
-    assert(r == 0 || r == 1);
-    return key;
-}
-
 //  Checks if a game key is pressed.
 int check_keyboard();
 
