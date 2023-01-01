@@ -1,3 +1,3 @@
 # CHIP-8 Emulator
 
-Interpreter which can run CHIP-8 games.
+Interpreter that can run CHIP-8 games.
