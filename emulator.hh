@@ -10,7 +10,7 @@
 #define DISPLAY_WIDTH       64
 #define DISPLAY_HEIGHT      32
 #define TEXEL_SCALE         16
-#define GAME_PATH           "tests/invaders.ch8"
+#define GAME_PATH           "tests/pong.ch8"
 #define SOUND_PATH          "beep.mp3"
 
 // TESTS
