@@ -1,3 +1,3 @@
 # CHIP-8 Emulator
 
-Interpreter that can run CHIP-8 games.
+Emulator to run CHIP-8 games like Pong, Cave Explorer, and Space Invaders.
