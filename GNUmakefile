@@ -1,6 +1,6 @@
 OBJ_NAME = emulator
 
-CC = g++ -std=c++17
+CC = g++ -std=c++20 -O2
 
 LIBRARY_PATHS = -L/opt/homebrew/lib
 INCLUDE_PATHS = -I/opt/homebrew/include
